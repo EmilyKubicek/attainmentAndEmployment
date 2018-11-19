@@ -52,7 +52,7 @@ dat$attain <- factor(edlevs[dat$attain],levels=edlevs,ordered=TRUE)
 
 dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionalized
     mutate(
-        deaf=ifelse(dear==1,1,0),
+        deaf=factor(ifelse(dear==1,'deaf','hearing')),
         Age=ifelse(agep<35,'25-34',
             ifelse(agep<45,'35-44',
             ifelse(agep<55,'45-54','55-64'))),
@@ -74,8 +74,8 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
                 ifelse(rac1p%in%c(3,4,5),'American Indian',
                 ifelse(rac1p==1,"White","Other"))))),
 
-        diss=ifelse(ddrs==1|deye==1|dout==1|dphy==1|(!is.na(dratx)&dratx==1)|drem==1,1,0),
-        blind=ifelse(deye==1,1,0),
+        diss=ifelse(ddrs==1|deye==1|dout==1|dphy==1|(!is.na(dratx)&dratx==1)|drem==1,'disabled','nondisabled'),
+        blind=ifelse(deye==1,'blind','seeing'),
 
         sex=ifelse(sex==1,'Male','Female'))
 
