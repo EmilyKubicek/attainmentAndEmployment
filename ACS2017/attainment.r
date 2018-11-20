@@ -77,10 +77,10 @@ employment <- standard('employment',empFun,dat,
                        )
 
 inLaborForce <- lapply(employment,
-                       function(x) setNames(data.frame(x[,seq(ncol(x)-7)],
+                       function(x) setNames(data.frame(x[,seq(ncol(x)-11)],
                                                        100-x[['% Not In Labor Force']],
                                                        x[['Not In Labor Force SE']],x$n),
-                                            c(rep('',ncol(x)-7),'% In Labor Force','SE','n')))
+                                            c(rep('',ncol(x)-11),'% In Labor Force','SE','n')))
 
 
 medianEarnings <-
@@ -172,15 +172,32 @@ info <- data.frame(c('Dataset: ACS',
 
 names(info) <- c('')
 
-attainment$info <- info[1:4,]
+attainment$info <- info
 employment$info <- rbind(info,'Full/Part-time expressed as percentage of employed people')
 medianEarnings$info <- rbind(info,c('Earnings are for full-time employed people, except in "overall" and "employed" tabs'))
 popBreakdown$info <- info
 
 popBreakdown[1:4] <- lapply(popBreakdown[1:4],t)
+inLaborForce$info <- rbind(info,'Calculated from employment numbers')
 
-
+openxlsx::write.xlsx(inLaborForce,'LaborForceParticipation2017.xlsx',colWidths='auto')
 openxlsx::write.xlsx(attainment,'EducatonalAttainment2017.xlsx',colWidths='auto')
 openxlsx::write.xlsx(employment,'employment2017.xlsx',colWidths='auto')
 openxlsx::write.xlsx(medianEarnings,'medianEarnings2017.xlsx',colWidths='auto')
 openxlsx::write.xlsx(popBreakdown,'populationBreakdown2017.xlsx',rowNames=TRUE,colWidths='auto')
+
+library(ggplot2)
+
+## employment by age
+empByAge <- FIX(dat%>%group_by(deaf,agep)%>%do(x=estExpr(employment=="Employed",sdat=.)))
+names(empByAge)[1:2] <- c('deaf','Age')
+
+ggplot(empByAge,aes(Age,est,color=deaf,group=deaf))+geom_smooth()+labs(color=NULL,y='% Employed')
+ggsave('employmentByAge.jpg')
+
+## earnings by age
+ernByAge <- FIX(dat%>%filter(fulltime)%>%group_by(deaf,agep)%>%do(x=med(~pernp,sdat=.)))
+names(ernByAge) <- c('deaf','Age','ern','se','n')
+
+ggplot(ernByAge,aes(Age,ern,color=deaf,group=deaf))+geom_smooth()+labs(color=NULL,y='Median Earnings (Full-Time Employed)')
+ggsave('earningsByAge.jpg')
