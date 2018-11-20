@@ -64,11 +64,17 @@ empFun <- function(x,.data){
 
 employment <- standard('employment',empFun,dat,
                        byAttainment=FIX(dat%>%group_by(deaf,attainCum)%>%do(x=empFun(1,.))),
-                       byFOD=FIX(
+                       `Field of Degree (small)`=FIX(
                            dat%>%
                            filter(attainCum>='Bachelors')%>%
-                           group_by(deaf,degree)%>%
-                           do(x=empFun(1,.))))
+                           group_by(deaf,fodSmall)%>%
+                           do(x=empFun(1,.))),
+                       `Field of Degree (big)`=FIX(
+                           dat%>%
+                           filter(attainCum>='Bachelors')%>%
+                           group_by(deaf,fodBig)%>%
+                           do(x=empFun(1,.)))
+                       )
 
 inLaborForce <- lapply(employment,
                        function(x) setNames(data.frame(x[,seq(ncol(x)-7)],
@@ -80,15 +86,20 @@ inLaborForce <- lapply(employment,
 medianEarnings <-
     standard(~pernp,med,filter(dat,fulltime),
              byAttainment=FIX(dat%>%filter(fulltime)%>%group_by(deaf,attainCum)%>%do(x=med(~pernp,sdat=.))),
-             byFOD=FIX(
+             `Field of Degree (small)`=FIX(
                  dat%>%
                  filter(attainCum>='Bachelors',fulltime)%>%
-                 group_by(deaf,degree)%>%
+                 group_by(deaf,fodSmall)%>%
                  do(x=med(~pernp,sdat=.))),
-             byOccupationCategory=FIX(
+             `Field of Degree (big)`=FIX(
+                 dat%>%
+                 filter(attainCum>='Bachelors',fulltime)%>%
+                 group_by(deaf,fodBig)%>%
+                 do(x=med(~pernp,sdat=.))),
+             byIndustry=FIX(
                  dat%>%
                  filter(fulltime)%>%
-                 group_by(deaf,industrycode)%>%
+                 group_by(deaf,industry)%>%
                  do(x=med(~pernp,sdat=.))),
              overall=FIX(dat%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))),
              employed=FIX(dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))))
@@ -117,20 +128,31 @@ popBreakdown <- list(
         FIX2(dat%>%group_by(deaf)%>%do(x=factorProps('cogDif',.)))))
 
 
-fodD <- factorProps('degree',filter(dat,deaf=='deaf',attain>='Bachelors degree'))
-fodH <- factorProps('degree',filter(dat,deaf=='hearing',attain>='Bachelors degree'))
-seCol <- grep(' SE',names(fodD),fixed=TRUE)
+fod1D <- factorProps('fodSmall',filter(dat,deaf=='deaf',attain>='Bachelors degree'))
+fod1H <- factorProps('fodSmall',filter(dat,deaf=='hearing',attain>='Bachelors degree'))
+seCol1 <- grep(' SE',names(fod1D),fixed=TRUE)
 
-fodD <- cbind(`Deaf %`=c(n=fodD['n'],fodD[-c(seCol,length(fodD))]),
-              `Deaf SE`=c(NA,fodD[seCol]))
-fodH <- cbind(`Hearing %`=c(n=fodH['n'],fodH[-c(seCol,length(fodH))]),
-              `Hearing SE`=c(NA,fodH[seCol]))
+fod1D <- cbind(`Deaf %`=c(n=fod1D['n'],fod1D[-c(seCol1,length(fod1D))]),
+              `Deaf SE`=c(NA,fod1D[seCol1]))
+fod1H <- cbind(`Hearing %`=c(n=fod1H['n'],fod1H[-c(seCol1,length(fod1H))]),
+              `Hearing SE`=c(NA,fod1H[seCol1]))
 
-popBreakdown$`Field of Degree`=cbind(fodD,fodH)
+popBreakdown$`Field of Degree (small)`=round(cbind(fod1D,fod1H),1)
+
+fod2D <- factorProps('fodBig',filter(dat,deaf=='deaf',attain>='Bachelors degree'))
+fod2H <- factorProps('fodBig',filter(dat,deaf=='hearing',attain>='Bachelors degree'))
+seCol2 <- grep(' SE',names(fod2D),fixed=TRUE)
+
+fod2D <- cbind(`Deaf %`=c(n=fod2D['n'],fod2D[-c(seCol2,length(fod2D))]),
+              `Deaf SE`=c(NA,fod2D[seCol2]))
+fod2H <- cbind(`Hearing %`=c(n=fod2H['n'],fod2H[-c(seCol2,length(fod2H))]),
+              `Hearing SE`=c(NA,fod2H[seCol2]))
+
+popBreakdown$`Field of Degree (big)`=round(cbind(fod2D,fod2H),1)
 
 
-occcodeD <- factorProps('industrycode',filter(dat,deaf=='deaf',fulltime))
-occcodeH <- factorProps('industrycode',filter(dat,deaf=='hearing',fulltime))
+occcodeD <- factorProps('industry',filter(dat,deaf=='deaf',fulltime))
+occcodeH <- factorProps('industry',filter(dat,deaf=='hearing',fulltime))
 seColOcc <- grep(' SE',names(occcodeD),fixed=TRUE)
 
 occcodeD <- cbind(`Deaf %`=c(n=occcodeD['n'],occcodeD[-c(seColOcc,length(occcodeD))]),
@@ -138,23 +160,21 @@ occcodeD <- cbind(`Deaf %`=c(n=occcodeD['n'],occcodeD[-c(seColOcc,length(occcode
 occcodeH <- cbind(`Hearing %`=c(n=occcodeH['n'],occcodeH[-c(seColOcc,length(occcodeH))]),
               `Hearing SE`=c(NA,occcodeH[seColOcc]))
 
-popBreakdown$`Occupation Category`=cbind(occcodeD,occcodeH)
+popBreakdown$`Industry`=round(cbind(occcodeD,occcodeH),1)
 
-info <- data.frame(c('Dataset',
-                     'Years',
-                     'Ages',
-                     'Excludes',
-                     'Occupational Category',
-                     'Field of Degree'),
-                   c('ACS','2017','25-64','Institutionalized People',
-                     'For full-time employed people only',
-                     'For people with Bachelors degrees or higher'),
+info <- data.frame(c('Dataset: ACS',
+                     'Year: 2017',
+                     'Ages: 25-64',
+                     'Excludes Institutionalized People',
+                     'Occupational Category for full-time employed people only',
+                     'Field of Degree for people with Bachelors degrees or higher'),
                    stringsAsFactors=FALSE)
-names(info) <- c('','')
+
+names(info) <- c('')
 
 attainment$info <- info[1:4,]
-employment$info <- rbind(info[-5,],c('Full/Part-time','Expressed as percentage of employed people'))
-medianEarnings$info <- rbind(info,c('Earnings are for full-time employed people','except in "overall" and "employed" tabs'))
+employment$info <- rbind(info,'Full/Part-time expressed as percentage of employed people')
+medianEarnings$info <- rbind(info,c('Earnings are for full-time employed people, except in "overall" and "employed" tabs'))
 popBreakdown$info <- info
 
 popBreakdown[1:4] <- lapply(popBreakdown[1:4],t)
@@ -163,4 +183,4 @@ popBreakdown[1:4] <- lapply(popBreakdown[1:4],t)
 openxlsx::write.xlsx(attainment,'EducatonalAttainment2017.xlsx',colWidths='auto')
 openxlsx::write.xlsx(employment,'employment2017.xlsx',colWidths='auto')
 openxlsx::write.xlsx(medianEarnings,'medianEarnings2017.xlsx',colWidths='auto')
-openxlsx::write.xlsx(popBreakdown,'populationBreakdown2017.xlsx',,colWidths='auto')
+openxlsx::write.xlsx(popBreakdown,'populationBreakdown2017.xlsx',rowNames=TRUE,colWidths='auto')
