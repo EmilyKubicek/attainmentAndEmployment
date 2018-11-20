@@ -54,8 +54,21 @@ standard <- function(x,FUN,dat,...)
 
 attainment <- standard('attainCum',factorProps,dat)
 
-employment <- standard('employment',factorProps,dat)
-employment$byAttainment=FIX(dat%>%group_by(deaf,attainCum)%>%do(x=factorProps('employment',.)))
+empFun <- function(x,.data){
+    emp <- factorProps('employment',.data)
+    ft <- estExpr(fulltime,employment=='Employed',sdat=.data)
+    ft <- c(ft[1],100-ft[1],ft[2:3])
+    names(ft) <- c('% Employed Full-Time','% Employed Part-Time','Full/Part-Time SE','Employed n')
+    c(emp,ft)
+}
+
+employment <- standard('employment',empFun,dat,
+                       byAttainment=FIX(dat%>%group_by(deaf,attainCum)%>%do(x=empFun(1,.))),
+                       byFOD=FIX(
+                           dat%>%
+                           filter(attainCum>='Bachelors')%>%
+                           group_by(deaf,degree)%>%
+                           do(x=empFun(1,.))))
 
 inLaborForce <- lapply(employment,
                        function(x) setNames(data.frame(x[,seq(ncol(x)-7)],
@@ -67,9 +80,18 @@ inLaborForce <- lapply(employment,
 medianEarnings <-
     standard(~pernp,med,filter(dat,fulltime),
              byAttainment=FIX(dat%>%filter(fulltime)%>%group_by(deaf,attainCum)%>%do(x=med(~pernp,sdat=.))),
+             byFOD=FIX(
+                 dat%>%
+                 filter(attainCum>='Bachelors',fulltime)%>%
+                 group_by(deaf,degree)%>%
+                 do(x=med(~pernp,sdat=.))),
+             byOccupationCategory=FIX(
+                 dat%>%
+                 filter(fulltime)%>%
+                 group_by(deaf,industrycode)%>%
+                 do(x=med(~pernp,sdat=.))),
              overall=FIX(dat%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))),
-             employed=FIX(dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))),
-             fulltime=FIX(dat%>%filter(fulltime)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))))
+             employed=FIX(dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))))
 
 
 medianEarnings <- lapply(medianEarnings,
@@ -97,7 +119,7 @@ popBreakdown <- list(
 
 fodD <- factorProps('degree',filter(dat,deaf=='deaf',attain>='Bachelors degree'))
 fodH <- factorProps('degree',filter(dat,deaf=='hearing',attain>='Bachelors degree'))
-seCol <- grep('.se',names(fodD),fixed=TRUE)
+seCol <- grep(' SE',names(fodD),fixed=TRUE)
 
 fodD <- cbind(`Deaf %`=c(n=fodD['n'],fodD[-c(seCol,length(fodD))]),
               `Deaf SE`=c(NA,fodD[seCol]))
@@ -109,7 +131,7 @@ popBreakdown$`Field of Degree`=cbind(fodD,fodH)
 
 occcodeD <- factorProps('industrycode',filter(dat,deaf=='deaf',fulltime))
 occcodeH <- factorProps('industrycode',filter(dat,deaf=='hearing',fulltime))
-seColOcc <- grep('.se',names(occcodeD),fixed=TRUE)
+seColOcc <- grep(' SE',names(occcodeD),fixed=TRUE)
 
 occcodeD <- cbind(`Deaf %`=c(n=occcodeD['n'],occcodeD[-c(seColOcc,length(occcodeD))]),
               `Deaf SE`=c(NA,occcodeD[seColOcc]))
@@ -122,17 +144,20 @@ info <- data.frame(c('Dataset',
                      'Years',
                      'Ages',
                      'Excludes',
-                     'Earnings and Occupational Category',
+                     'Occupational Category',
                      'Field of Degree'),
                    c('ACS','2017','25-64','Institutionalized People',
                      'For full-time employed people only',
-                     'For people with Bachelors degrees or higher'))
+                     'For people with Bachelors degrees or higher'),
+                   stringsAsFactors=FALSE)
 names(info) <- c('','')
 
-attainment$info <- info
-employment$info <- info
-medianEarnings$info <- info
+attainment$info <- info[1:4,]
+employment$info <- rbind(info[-5,],c('Full/Part-time','Expressed as percentage of employed people'))
+medianEarnings$info <- rbind(info,c('Earnings are for full-time employed people','except in "overall" and "employed" tabs'))
 popBreakdown$info <- info
+
+popBreakdown[1:4] <- lapply(popBreakdown[1:4],t)
 
 
 openxlsx::write.xlsx(attainment,'EducatonalAttainment2017.xlsx',colWidths='auto')
