@@ -60,7 +60,7 @@ employment$byAttainment=FIX(dat%>%group_by(deaf,attainCum)%>%do(x=factorProps('e
 inLaborForce <- lapply(employment,
                        function(x) setNames(data.frame(x[,seq(ncol(x)-7)],
                                                        100-x[['% Not In Labor Force']],
-                                                       x[['Not In Labor Force.se']],x$n),
+                                                       x[['Not In Labor Force SE']],x$n),
                                             c(rep('',ncol(x)-7),'% In Labor Force','SE','n')))
 
 
