@@ -1,7 +1,13 @@
 library(dplyr)
 library(broom)
 
-if(!exists("dat")) load('attainmentEmploymentData.RData')
+if(!exists("dat")){
+    if('attainmentEmploymentData.RData'%in%list.files()){
+        load('attainmentEmploymentData.RData')
+    } else source('makeData.r')
+}
+
+
 source('../generalCode/estimationFunctions.r')
 source('../generalCode/median.r')
 
