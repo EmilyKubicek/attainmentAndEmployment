@@ -188,6 +188,8 @@ openxlsx::write.xlsx(attainment,'EducatonalAttainment2017.xlsx',colWidths='auto'
 openxlsx::write.xlsx(employment,'employment2017.xlsx',colWidths='auto')
 openxlsx::write.xlsx(medianEarnings,'medianEarnings2017.xlsx',colWidths='auto')
 openxlsx::write.xlsx(popBreakdown,'populationBreakdown2017.xlsx',rowNames=TRUE,colWidths='auto')
+openxlsx::write.xlsx(employmentByIndustry,'industryPercentagesFT2017.xlsx', rownames=TRUE,colWidths='auto')
+
 
 library(ggplot2)
 
