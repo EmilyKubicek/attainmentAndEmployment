@@ -1,5 +1,6 @@
 library(dplyr)
 library(broom)
+library(ggplot2)
 
 if(!exists("dat")){
     if('attainmentEmploymentDataACS17.RData'%in%list.files()){
