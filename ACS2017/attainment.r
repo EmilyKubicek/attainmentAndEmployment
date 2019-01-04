@@ -199,8 +199,18 @@ ggsave('employmentByAge.jpg')
 
 ## earnings by age
 ernByAge <- FIX(dat%>%filter(fulltime)%>%group_by(deaf,agep)%>%do(x=med(~pernp,sdat=.)))
-names(ernByAge) <- c('deaf','Age','ern','se','n')
+names(ernByAge) <- c('deaf','Age','median_earnings','se','n')
 openxlsx::write.xlsx(ernByAge,'medianEarningsByAgeFullTime2017.xlsx')
 
-ggplot(ernByAge,aes(Age,ern,color=deaf,group=deaf))+geom_smooth()+labs(color=NULL,y='Median Earnings (Full-Time Employed)')
+ggplot(ernByAge,aes(Age,median_earnings,color=deaf,group=deaf))+geom_smooth()+labs(color=NULL,y='Median Earnings (Full-Time Employed)')
 ggsave('earningsByAge.jpg')
+
+## mean earnings by age
+ernByAgeMean <- FIX(dat%>%filter(fulltime)%>%group_by(deaf,agep)%>%do(x=estSEstr('pernp',sdat=.)))
+names(ernByAgeMean) <- c('deaf','Age','mean_earnings','se','n')
+openxlsx::write.xlsx(ernByAgeMean,'meanEarningsByAgeFullTime2017.xlsx')
+
+ggplot(ernByAgeMean,aes(Age,mean_earnings,color=deaf,group=deaf))+geom_smooth()+geom_point()+labs(color=NULL,y='Mean Earnings (Full-Time Employed)')
+ggsave('earningsByAgeMean.jpg')
+
+
