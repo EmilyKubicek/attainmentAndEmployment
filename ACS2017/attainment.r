@@ -114,6 +114,8 @@ medianEarnings <- lapply(medianEarnings,
                              x
                          })
 
+employmentByIndustry <- FIX(dat%>%filter(fulltime)%>%group_by(deaf)%>%do(x=factorProps('industry',.)))
+
 popBreakdown <- list(
     percentDeaf=factorProps('deaf',dat),
     byAge=FIX(dat%>%group_by(deaf)%>%do(x=factorProps('Age',.))),
