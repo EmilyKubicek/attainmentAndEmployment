@@ -34,27 +34,67 @@ dat$fodSmall <- fodCat$small[match(dat$fod1p,fodCat$num)]
 dat$fodBig <- fodCat$big[match(dat$fod1p,fodCat$num)]
 
 
-### step 1: download census-2012-final-code-list.xls
-### from https://www2.census.gov/programs-surveys/demo/guidance/industry-occupation/census-2012-final-code-list.xls
+## ### step 1: download census-2012-final-code-list.xls
+## ### from https://www2.census.gov/programs-surveys/demo/guidance/industry-occupation/census-2012-final-code-list.xls
 
-### step 2: save as .xlsx file
+## ### step 2: save as .xlsx file
 
-codes <- read.xlsx('../census-2012-final-code-list.xlsx',startRow=5)
+## codes <- read.xlsx('../census-2012-final-code-list.xlsx',startRow=5)
+## codes <- codes[is.na(codes$X1)|codes$X1!="and Waste Management Services",]
+## names(codes) <- c('X1','desc','code1','code2')
+## ccc <- subset(codes,!is.na(X1)|grepl('-',code1))
+## newcode <- NULL
+## for(i in 1:(nrow(ccc)-1)){
+##   if(is.na(ccc$X1[i])){
+##     newcode <- rbind(newcode,setNames(ccc[i,c('desc','code1')],c('ind','code')))
+##   } else if(!is.na(ccc$X1[i+1])){
+##     newcode <- rbind(newcode,setNames(ccc[i,c('X1','code1')],c('ind','code')))
+##   }
+## }
+## newcode <- rbind(newcode,setNames(ccc[nrow(ccc),c('X1','code1')],c('ind','code')))
+## codesplit <- strsplit(newcode$code,'-')
+## newcode$code1 <- sapply(codesplit,function(x) x[1])
+## newcode$code2 <- sapply(codesplit,function(x) x[length(x)])
+## newcode$ind2 <- c('Agriculture','Extraction','Construction','Manufacturing','Wholesale','Retail','Transportation','Utilities','Information Services','Finance','Finance','Professional Services','Government, Military, Administration','Education','Medical','Entertainment','Service Industry','Service Industry','Government, Military, Administration','Government, Military, Administration')
 
-lastVal <- NA
-for(i in 1:nrow(codes)){
-    if(is.na(codes$X1[i])){
-        codes$X1[i] <- lastVal
-    } else{
-        lastVal <- codes$X1[i]
-    }
-}
+## dat$ind1 <- NA
+## for(i in 1:nrow(newcode)){
+##   print(i)
+##   dat$ind1[dat$indp>=newcode$code1[i]&dat$indp<=newcode$code2[i]] <- newcode$ind2[i]
+## }
+## dat$ind1[dat$indp==7570] <- 'Professional Services'
 
-codes$X1[codes$X1=="and Waste Management Services"] <-
-         "Professional, Scientific, and Management, and Administrative, and Waste Management Services"
 
-codes <- na.omit(codes)
-dat$industry <- codes$X1[match(dat$indp,codes[['2012.Census.Code']])]
+### Taken from factor labels.R (mark bond):
+dat$industry <- NA
+dat$x <- substring(dat$naicsp, first = 1, last=2)
+dat$industry <- ifelse(dat$x == "11", "Agriculture", dat$industry)
+dat$industry <- ifelse(dat$x == "21", "Extraction", dat$industry)
+dat$industry <- ifelse(dat$x == "22", "Utilities", dat$industry)
+dat$industry <- ifelse(dat$x == "23", "Construction", dat$industry)
+dat$industry <- ifelse(dat$x == "31", "Manufacturing", dat$industry)
+dat$industry <- ifelse(dat$x == "32", "Manufacturing", dat$industry)
+dat$industry <- ifelse(dat$x == "33", "Manufacturing", dat$industry)
+dat$industry <- ifelse(dat$x == "3M", "Manufacturing", dat$industry)
+dat$industry <- ifelse(dat$x == "42", "Wholesale", dat$industry)
+dat$industry <- ifelse(dat$x == "44", "Retail", dat$industry)
+dat$industry <- ifelse(dat$x == "45", "Retail", dat$industry)
+dat$industry <- ifelse(dat$x == "4M", "Retail", dat$industry)
+dat$industry <- ifelse(dat$x == "48", "Transportation", dat$industry)
+dat$industry <- ifelse(dat$x == "49", "Transportation", dat$industry)
+dat$industry <- ifelse(dat$x == "51", "Information services", dat$industry)
+dat$industry <- ifelse(dat$x == "52", "Finance", dat$industry)
+dat$industry <- ifelse(dat$x == "53", "Finance", dat$industry)
+dat$industry <- ifelse(dat$x == "54", "Professional services", dat$industry)
+dat$industry <- ifelse(dat$x == "55", "Professional services", dat$industry)
+dat$industry <- ifelse(dat$x == "56", "Professional services", dat$industry)
+dat$industry <- ifelse(dat$x == "61", "Education", dat$industry)
+dat$industry <- ifelse(dat$x == "62", "Medical", dat$industry)
+dat$industry <- ifelse(dat$x == "71", "Entertainment", dat$industry)
+dat$industry <- ifelse(dat$x == "72", "Entertainment", dat$industry)
+dat$industry <- ifelse(dat$x == "81", "Service", dat$industry)
+dat$industry <- ifelse(dat$x == "92", "GOV/MIL/ADM", dat$industry)
+dat$industry <- ifelse(dat$x == "99", "Unemployed", dat$industry)
 
 
 dat$state <- states$abb[match(dat$st,states$x)]
