@@ -8,15 +8,20 @@ states <- read.csv('../../../data/states.csv')
 
 
 
-varNames <- c('ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','RAC1P','HISP','SEX','PERNP','PINCP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP',paste0('PWGTP',1:80))
+varNames <- c('ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','RAC1P','HISP','SEX','PERNP','PINCP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP','COW',paste0('PWGTP',1:80))
 
-firstTry <- read_csv(paste0('../../../data/byYear/ss17pusa.csv'), n_max=5)
-colTypes <- ifelse(names(firstTry)%in%varNames,
-                   ifelse(names(firstTry)%in%c('NAICSP','FOD1P','OCCP','INDP'),'c','i'),'-')
-missingVars <- setdiff(varNames,names(firstTry)[colTypes%in%c('c','i')])
-if(length(missingVars)) cat('WARNING: Missing these variables:\n',missingVars,'\n')
+## firstTry <- read_csv(paste0('../../../data/byYear/ss17pusa.csv'), n_max=5)
+## colTypes <- ifelse(names(firstTry)%in%varNames,
+##                    ifelse(names(firstTry)%in%c('NAICSP','FOD1P','OCCP','INDP'),'c','i'),'-')
+## missingVars <- setdiff(varNames,names(firstTry)[colTypes%in%c('c','i')])
+## if(length(missingVars)) cat('WARNING: Missing these variables:\n',missingVars,'\n')
+## colTypes <- paste(colTypes,collapse='')
 
-colTypes <- paste(colTypes,collapse='')
+ctypes <- rep('i',length(varNames))
+names(ctypes) <- varNames
+ctypes[c('NAICSP','FOD1P','OCCP','INDP')] <- 'c'
+ctypes$.default <- '_'
+colTypes <- do.call('cols',as.list(ctypes))
 
 
 datA <- read_csv('../../../data/byYear/ss17pusa.csv',col_types=colTypes)
