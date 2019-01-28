@@ -10,12 +10,6 @@ states <- read.csv('../../../data/states.csv')
 
 varNames <- c('ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','RAC1P','HISP','SEX','PERNP','PINCP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP','COW',paste0('PWGTP',1:80))
 
-## firstTry <- read_csv(paste0('../../../data/byYear/ss17pusa.csv'), n_max=5)
-## colTypes <- ifelse(names(firstTry)%in%varNames,
-##                    ifelse(names(firstTry)%in%c('NAICSP','FOD1P','OCCP','INDP'),'c','i'),'-')
-## missingVars <- setdiff(varNames,names(firstTry)[colTypes%in%c('c','i')])
-## if(length(missingVars)) cat('WARNING: Missing these variables:\n',missingVars,'\n')
-## colTypes <- paste(colTypes,collapse='')
 
 ctypes <- rep('i',length(varNames))
 names(ctypes) <- varNames
@@ -158,7 +152,12 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
         diss=ifelse(ddrs==1|deye==1|dout==1|dphy==1|(!is.na(dratx)&dratx==1)|drem==1,'disabled','nondisabled'),
         blind=ifelse(deye==1,'blind','seeing'),
 
-        sex=ifelse(sex==1,'Male','Female'))
+        sex=ifelse(sex==1,'Male','Female'),
+
+        selfEmp=cow%in%(6:7),
+        bizOwner=cow==7
+
+      )
 
 
 
