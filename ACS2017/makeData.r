@@ -199,7 +199,7 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
                     ifelse(rac1p==7,"PacIsl",
                       ifelse(rac1p==9,"Multiracial",
                 ifelse(rac1p%in%c(3,4,5),'American Indian',
-                ifelse(rac1p==1,"White","Other"))))),
+                ifelse(rac1p==1,"White","Other"))))))),
 
         diss=ifelse(ddrs==1|deye==1|dout==1|dphy==1|(!is.na(dratx)&dratx==1)|drem==1,'disabled','nondisabled'),
         blind=ifelse(deye==1,'blind','seeing'),
@@ -213,6 +213,6 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
 
       )
 
-
+print(xtabs(~raceEth,data=dat))
 
 save(dat,file='attainmentEmploymentDataACS17.RData')
