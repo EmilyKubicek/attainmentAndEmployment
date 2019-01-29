@@ -209,7 +209,7 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
         selfEmp=cow%in%(6:7),
         bizOwner=cow==7,
 
-        liveWkids=!is.na(fparc)&(fparc!=4)
+        liveWkids=ifelse(!is.na(fparc)&(fparc!=4),'Lives w Related Kids',"Doesn't Live w Related Kids")
 
       )
 
