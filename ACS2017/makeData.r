@@ -1,7 +1,7 @@
 library(readr) ## read in the csvs faster
 library(dplyr)
 library(openxlsx)
-states <- read.csv('../../../data/states.csv')
+states <- read.csv('../generalCode/states.csv')
 
 #1) a simple breakdown of current enrollment, and completion data, across type of institution (4 year colleges, community colleges, etc) using all the 'type of institution' data we have, so that would give us some nice descriptives and allow us to make a final decision on how we want to categorize 'community colleges and 2-year institutions'
 
@@ -70,7 +70,7 @@ dat$fodBig <- fodCat$big[match(dat$fod1p,fodCat$num)]
 
 
 ### Taken from factor labels.R (mark bond):
-indCode <- read.csv('../naicsCodes.csv') ## copied from data dictionary
+indCode <- read.csv('../generalCode/naicsCodes.csv') ## copied from data dictionary
 ### get three-letter descriptions
 indCode$ind2 <- substr(indCode$ind,1,3)
 
