@@ -29,7 +29,7 @@ datHHa <- read_csv('../../../data/byYear/ss17husa.csv',col_types=cols(SERIALNO='
 datHHb <- read_csv('../../../data/byYear/ss17husb.csv',col_types=cols(SERIALNO='c',FPARC='i',.default='_'))
 datHH <- rbind(datHHa,datHHb)
 
-dat <- merge(dat,datHH,by='SERIALNO',all.x=TRUE,all.y=FALSE)
+dat <- left_join(dat,datHH,by='SERIALNO')
 
 names(dat) <- tolower(names(dat))
 
@@ -102,9 +102,9 @@ indCode$ind3 <- tolower(substr(indCode$ind, 5, nchar(indCode$ind)))
 
 sink('common industries by category.txt')
 for(ind in unique(na.omit(dat$industry))){
-  cat(ind,'\t')
+  cat(ind,'\n')
   ttt <- table(dat$naicsp[dat$industry==ind])
-  for(i in 1:min(length(ttt),3)) cat(indCode$ind3[indCode$code==names(ttt)[i]],' / ')#%in%names(table(dat$naicsp[dat$industry==ind])[1:3])],collapse='; '),'\n')
+  for(i in 1:min(length(ttt),3)) cat('\t\t',indCode$ind3[indCode$code==names(ttt)[i]],'\n')
   cat('\n')
 }
 sink()
@@ -186,7 +186,7 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
             ifelse(attain<'Associates degree','Some College',
             ifelse(attain<'Bachelors degree','Associates',
               ifelse(attain<'Masters degree','Bachelors',
-                ifelse(attain<'Doctorate','Masters/Professional','PhD')))))),
+                ifelse(attain<'Doctorate degree','Masters/Professional','PhD')))))),
            levels=c('No HS','HS Diploma','Some College','Associates','Bachelors','Masters/Professional','PhD')),
         employment=factor(ifelse(esr%in%c(1,2,4,5),'Employed',
                    ifelse(esr==3,'Unemployed','Not In Labor Force'))),
@@ -204,7 +204,7 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
         diss=ifelse(ddrs==1|deye==1|dout==1|dphy==1|(!is.na(dratx)&dratx==1)|drem==1,'disabled','nondisabled'),
         blind=ifelse(deye==1,'blind','seeing'),
 
-        sex=ifelse(sex==1,'Male','Female'),
+        Sex=ifelse(sex==1,'Male','Female'),
 
         selfEmp=cow%in%(6:7),
         bizOwner=cow==7,
@@ -213,6 +213,7 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
 
       )
 
-print(xtabs(~raceEth,data=dat))
+print(xtabs(~raceEth+Sex,data=dat))
+print(xtabs(~attainCum,data=dat))
 
 save(dat,file='attainmentEmploymentDataACS17.RData')
