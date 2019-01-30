@@ -185,15 +185,19 @@ employment1 <- stand1('employment',empFun,dat,
 
 employment <- stand2(employment1)
 
-inLaborForce <- lapply(employment,
-                       function(x) setNames(data.frame(x[,seq(ncol(x)-11)],
-                                                       100-x[['% Not In Labor Force']],
-                                                       x[['Not In Labor Force SE']],x$n),
-                                            c(rep('',ncol(x)-11),'% In Labor Force','SE','n')))
+inLaborForce <-
+  lapply(employment,
+    function(x)
+      setNames(
+        data.frame(x[,seq(ncol(x)-11)],
+          vapply(1:nrow(x),
+            function(i) ifelse(i%%3==0,x[['% Not In Labor Force']][i],100-x[['% Not In Labor Force']][i]),1.2),
+          x[['Not In Labor Force SE']],x$n),
+        c(rep('',ncol(x)-11),'% In Labor Force','SE','n')))
 
 
 medianEarnings1 <-
-    stand1(~pernp,med,filter(dat,fulltime),
+    c(stand1(~pernp,med,filter(dat,fulltime),
              byAttainment=dat%>%filter(fulltime)%>%group_by(deaf,attainCum)%>%do(x=med(~pernp,sdat=.)),
              `Field of Degree (small)`=
                  dat%>%
@@ -209,10 +213,12 @@ medianEarnings1 <-
                  dat%>%
                  filter(fulltime)%>%
                  group_by(deaf,industry)%>%
-                 do(x=med(~pernp,sdat=.)),
-             overall=dat%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.)),
-             employed=dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.)))
+                 do(x=med(~pernp,sdat=.))),
+             everyone=list(dat%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))),
+             employed=list(dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))))
 medianEarnings <- stand2(medianEarnings1,med=TRUE)
+names(medianEarnings)[!names(medianEarnings)%in%c('everyone','employed')] <-
+  paste(names(medianEarnings)[!names(medianEarnings)%in%c('everyone','employed')],'(Full-time)')
 
 ## medianEarnings <- lapply(medianEarnings,
 ##                          function(x) {
@@ -318,7 +324,7 @@ names(info) <- c('')
 
 attainment$info <- info
 employment$info <- rbind(info,'Full/Part-time expressed as percentage of employed people')
-medianEarnings$info <- rbind(info,c('Earnings are for full-time employed people, except in "overall" and "employed" tabs'))
+medianEarnings$info <- rbind(info,c('Earnings are for full-time employed people, except in "everyone" and "employed" tabs'))
 popBreakdown$info <- info
 
 popBreakdown[1:4] <- lapply(popBreakdown[1:4],t)
@@ -376,5 +382,24 @@ T <- beta0/se
 pval <- 2*pnorm(-abs(T))
 
 print(cbind(beta0,se,T,pval)[1:4,])
+
+### what about only full-time employed?
+mod0 <- lm(log(pernp)~deaf+as.factor(agep)+fodBig,data=dat,weights=pwgtp,
+  subset=pernp>0&attain>="Bachelors degree"&fulltime)
+betas <- matrix(nrow=length(coef(mod0)),ncol=80)
+
+for(i in 1:80){
+  cat(i,' ')
+  dat$wrep <- dat[[paste0('pwgtp',i)]]
+  dat$wrep[dat$wrep<0] <- 0
+  betas[,i] <- coef(update(mod0,weights=wrep))
+}
+beta0 <- coef(mod0)
+se <- sapply(1:length(beta0),function(i) sqrt(mean((betas[i,]-beta0[i])^2)*4))
+T <- beta0/se
+pval <- 2*pnorm(-abs(T))
+
+print(cbind(beta0,se,T,pval)[1:4,])
+
 
 save(attainment1,employment1,medianEarnings1,bizOwner1,selfEmp1,medEarnBizOwner1,mod0,betas,file='results.RData')
