@@ -12,6 +12,45 @@ if(!exists("dat")){
 source('../generalCode/estimationFunctions.r')
 source('../generalCode/median.r')
 
+FIXsig1 <- function(tib1,med=FALSE){
+  stopifnot(nrow(tib1)==2)
+  #stopifnot(ncol(tib1)==1)
+  lst <- sapply(tib1,is.list)
+  stopifnot(sum(lst)==1)
+  names(tib1)[lst] <- 'x'
+
+  sig <- if(med) testsMed(tib1$x[[1]],tib1$x[[2]]) else tests(tib1$x[[1]],tib1$x[[2]])
+
+  out <- as.data.frame(rbind(round(tib1$x[[1]],1),round(tib1$x[[2]],1),round(sig,2)))
+  v1 <- as.character(tib1[['deaf']])
+  out <- cbind(dh=c(v1,'p-val (deaf-hearing)'),out)
+  out
+ }
+
+
+FIXsig <- function(tib,med=FALSE){
+  stopifnot('deaf'%in%names(tib))
+  lst <- sapply(tib,is.list)
+
+  other <- setdiff(names(tib)[!lst],'deaf')
+
+  if(length(other)==0)
+    return(FIXsig1(tib,med=med))
+
+  qqq <- distinct(tib[,other])
+  out <- NULL
+  for(j in 1:nrow(qqq)){
+    rows <- which(sapply(1:nrow(tib), function(i) all(tib[i,other]==qqq[j,])))
+    res <- FIXsig1(tib[rows,c('deaf',names(tib)[lst])],med=med)
+    res <- cbind(qqq[j,],res)
+    out <- rbind(out,res)
+  }
+
+  names(out)[1:sum(!lst)] <- ''
+  out
+}
+
+
 
 FIX <- function(tib){
     lst <- sapply(tib,is.list)
@@ -33,28 +72,95 @@ FIX2 <- function(tib){
     out
 }
 
-standard <- function(x,FUN,dat,...)
-    list(
-        overall=FIX(dat%>%group_by(deaf)%>%do(x=FUN(x,.))),
-        byAge=FIX(dat%>%group_by(deaf,Age)%>%do(x=FUN(x,.))),
-        bySex=FIX(dat%>%group_by(deaf,sex)%>%do(x=FUN(x,.))),
-        byRace=FIX(dat%>%group_by(deaf,raceEth)%>%do(x=FUN(x,.))),
-        byRaceGender=FIX(dat%>%group_by(deaf,raceEth,sex)%>%do(x=FUN(x,.))),
-        byParenthood=FIX(dat%>%group_by(deaf,liveWkids)%>%do(x=FUN(x,.))),
-        byDiss=rbind(
-            FIX(dat%>%group_by(deaf,diss)%>%do(x=FUN(x,.))),
-            FIX(dat%>%group_by(deaf,blind)%>%do(x=FUN(x,.))),
-            FIX(dat%>%group_by(deaf,selfCare)%>%do(x=FUN(x,.))),
-            FIX(dat%>%group_by(deaf,indLiv)%>%do(x=FUN(x,.))),
-            FIX(dat%>%group_by(deaf,amb)%>%do(x=FUN(x,.))),
-            FIX(dat%>%group_by(deaf,servDis)%>%do(x=FUN(x,.))),
-            FIX(dat%>%group_by(deaf,cogDif)%>%do(x=FUN(x,.)))),
-        ...
-    )
+ttest <- function(m1,m2,s1,s2){
+  T <- abs(m1-m2)/sqrt(s1^2+s2^2)
+  2*pnorm(-T)
+}
+
+testsMed <- function(mat1,mat2){
+  if(all(c('est','se')%in%names(mat1))){
+    names(mat2)[names(mat2)=='est'] <- names(mat1)[names(mat1)=='est'] <- 'median'
+    names(mat2)[names(mat2)=='se'] <- names(mat1)[names(mat1)=='se'] <- 'SE'
+  }
+
+  c(ttest(mat1['median'],mat2['median'],mat1['SE'],mat2['SE']),NA,NA)
+}
+
+tests <- function(mat1,mat2){
+  stopifnot(all(names(mat1)==names(mat2)))
+  nnn <- names(mat1)
+  nnn <- gsub('%','',nnn)
+  nnn <- gsub(' ','',nnn)
+
+  SEcols <- grep('SE',nnn)
+
+  sig <- rep(NA,length(nnn))
+
+  for(i in 1:length(SEcols)){
+    seN <- nnn[SEcols[i]]
+    vv <- gsub('SE','',seN)
+    sig[nnn==vv] <- ttest(mat1[nnn==vv],mat2[nnn==vv],mat1[nnn==seN],mat2[nnn==seN])
+  }
+  sig
+}
 
 
 
-attainment <- standard('attainCum',factorProps,dat)
+stand1 <- function(x,FUN,dat,...)
+  list(
+    overall=dat%>%group_by(deaf)%>%do(x=FUN(x,.)),
+    byAge=dat%>%group_by(deaf,Age)%>%do(x=FUN(x,.)),
+    bySex=dat%>%group_by(deaf,Sex)%>%do(x=FUN(x,.)),
+    byRace=dat%>%group_by(deaf,raceEth)%>%do(x=FUN(x,.)),
+    byRaceGender=dat%>%group_by(deaf,raceEth,Sex)%>%do(x=FUN(x,.)),
+    byParenthood=dat%>%group_by(deaf,liveWkids)%>%do(x=FUN(x,.)),
+    byDiss=list(
+      dat%>%group_by(deaf,diss)%>%do(x=FUN(x,.)),
+      dat%>%group_by(deaf,blind)%>%do(x=FUN(x,.)),
+      dat%>%group_by(deaf,selfCare)%>%do(x=FUN(x,.)),
+      dat%>%group_by(deaf,indLiv)%>%do(x=FUN(x,.)),
+      dat%>%group_by(deaf,amb)%>%do(x=FUN(x,.)),
+      dat%>%group_by(deaf,servDis)%>%do(x=FUN(x,.)),
+      dat%>%group_by(deaf,cogDif)%>%do(x=FUN(x,.))),
+    ...
+  )
+
+stand2 <- function(s1,med=FALSE){
+  out <- list()
+  for(nn in names(s1)){
+    print(nn)
+     if(is.data.frame(s1[[nn]])){
+       out[[nn]] <- FIXsig(s1[[nn]],med=med)
+     } else out[[nn]] <- do.call('rbind',lapply(s1[[nn]],FIXsig,med=med))
+  }
+  out
+}
+
+
+
+## standard <- function(x,FUN,dat,...)
+##   list(
+##     overall=FIXsig(dat%>%group_by(deaf)%>%do(x=FUN(x,.)))#,
+##     byAge=FIXsig(dat%>%group_by(deaf,Age)%>%do(x=FUN(x,.)))#,
+##     bySex=FIXsig(dat%>%group_by(deaf,Sex)%>%do(x=FUN(x,.)))#,
+##     byRace=FIXsig(dat%>%group_by(deaf,raceEth)%>%do(x=FUN(x,.)))#,
+##     byRaceGender=FIXsig(dat%>%group_by(deaf,raceEth,Sex)%>%do(x=FUN(x,.)))#,
+##     byParenthood=FIXsig(dat%>%group_by(deaf,liveWkids)%>%do(x=FUN(x,.)))#,
+##     byDiss=rbind(
+##       FIXsig(dat%>%group_by(deaf,diss)%>%do(x=FUN(x,.)))#,
+##       FIXsig(dat%>%group_by(deaf,blind)%>%do(x=FUN(x,.)))#,
+##       FIXsig(dat%>%group_by(deaf,selfCare)%>%do(x=FUN(x,.)))#,
+##       FIXsig(dat%>%group_by(deaf,indLiv)%>%do(x=FUN(x,.)))#,
+##       FIXsig(dat%>%group_by(deaf,amb)%>%do(x=FUN(x,.)))#,
+##       FIXsig(dat%>%group_by(deaf,servDis)%>%do(x=FUN(x,.)))#,
+##       FIXsig(dat%>%group_by(deaf,cogDif)%>%do(x=FUN(x,.))))#,
+##     ...
+##   )
+
+print(xtabs(~Sex,data=dat))
+
+attainment1 <- stand1('attainCum',factorProps,dat)
+attainment <- stand2(attainment1)
 
 empFun <- function(x,.data){
     emp <- factorProps('employment',.data)
@@ -64,19 +170,20 @@ empFun <- function(x,.data){
     c(emp,ft)
 }
 
-employment <- standard('employment',empFun,dat,
-                       byAttainment=FIX(dat%>%group_by(deaf,attainCum)%>%do(x=empFun(1,.))),
-                       `Field of Degree (small)`=FIX(
+employment1 <- stand1('employment',empFun,dat,
+                       byAttainment=dat%>%group_by(deaf,attainCum)%>%do(x=empFun(1,.)),
+                       `Field of Degree (small)`=
                            dat%>%
                            filter(attainCum>='Bachelors')%>%
                            group_by(deaf,fodSmall)%>%
-                           do(x=empFun(1,.))),
-                       `Field of Degree (big)`=FIX(
+                           do(x=empFun(1,.)),
+                       `Field of Degree (big)`=
                            dat%>%
                            filter(attainCum>='Bachelors')%>%
                            group_by(deaf,fodBig)%>%
                            do(x=empFun(1,.)))
-                       )
+
+employment <- stand2(employment1)
 
 inLaborForce <- lapply(employment,
                        function(x) setNames(data.frame(x[,seq(ncol(x)-11)],
@@ -85,61 +192,66 @@ inLaborForce <- lapply(employment,
                                             c(rep('',ncol(x)-11),'% In Labor Force','SE','n')))
 
 
-medianEarnings <-
-    standard(~pernp,med,filter(dat,fulltime),
-             byAttainment=FIX(dat%>%filter(fulltime)%>%group_by(deaf,attainCum)%>%do(x=med(~pernp,sdat=.))),
-             `Field of Degree (small)`=FIX(
+medianEarnings1 <-
+    stand1(~pernp,med,filter(dat,fulltime),
+             byAttainment=dat%>%filter(fulltime)%>%group_by(deaf,attainCum)%>%do(x=med(~pernp,sdat=.)),
+             `Field of Degree (small)`=
                  dat%>%
                  filter(attainCum>='Bachelors',fulltime)%>%
                  group_by(deaf,fodSmall)%>%
-                 do(x=med(~pernp,sdat=.))),
-             `Field of Degree (big)`=FIX(
+                 do(x=med(~pernp,sdat=.)),
+             `Field of Degree (big)`=
                  dat%>%
                  filter(attainCum>='Bachelors',fulltime)%>%
                  group_by(deaf,fodBig)%>%
-                 do(x=med(~pernp,sdat=.))),
-             byIndustry=FIX(
+                 do(x=med(~pernp,sdat=.)),
+             byIndustry=
                  dat%>%
                  filter(fulltime)%>%
                  group_by(deaf,industry)%>%
-                 do(x=med(~pernp,sdat=.))),
-             overall=FIX(dat%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))),
-             employed=FIX(dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))))
+                 do(x=med(~pernp,sdat=.)),
+             overall=dat%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.)),
+             employed=dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.)))
+medianEarnings <- stand2(medianEarnings1,med=TRUE)
 
-
-medianEarnings <- lapply(medianEarnings,
-                         function(x) {
-                             names(x)[names(x)=='1'] <- 'Med. Earnings'
-                             names(x)[names(x)=='2'] <- 'SE'
-                             names(x)[names(x)=='3'] <- 'n'
-                             x
-                         })
+## medianEarnings <- lapply(medianEarnings,
+##                          function(x) {
+##                              names(x)[names(x)=='1'] <- 'Med. Earnings'
+##                              names(x)[names(x)=='2'] <- 'SE'
+##                              names(x)[names(x)=='3'] <- 'n'
+##                              x
+##                          })
 
 employmentByIndustry <- FIX(dat%>%filter(fulltime)%>%group_by(deaf)%>%do(x=factorProps('industry',.)))
 
 ############# self employed & business owners
 ## percent own small biz
-bizOwner <- rbind(
-  overall= FIX(dat%>%group_by(deaf)%>%do(x=estExpr(bizOwner,sdat=.))),
-  employed=FIX(dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=estExpr(bizOwner,sdat=.))),
-  under40=FIX(dat%>%filter(agep<40)%>%group_by(deaf)%>%do(x=estExpr(bizOwner,sdat=.))),
-  under40Employed=FIX(dat%>%filter(agep<40,employment=='Employed')%>%group_by(deaf)%>%do(x=estExpr(bizOwner,sdat=.))))
+bizOwner1 <- list(
+  overall= dat%>%group_by(deaf)%>%do(x=estExpr(bizOwner,sdat=.)),
+  employed=dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=estExpr(bizOwner,sdat=.)),
+  under40=dat%>%filter(agep<40)%>%group_by(deaf)%>%do(x=estExpr(bizOwner,sdat=.)),
+  under40Employed=dat%>%filter(agep<40,employment=='Employed')%>%group_by(deaf)%>%do(x=estExpr(bizOwner,sdat=.)))
+
+bizOwner <- do.call('rbind',lapply(bizOwner1,FIXsig,med=TRUE))
+
 names(bizOwner)[2] <- '% Owns Business'
 
-selfEmp <- rbind(
-  overall= FIX(dat%>%group_by(deaf)%>%do(x=estExpr(selfEmp,sdat=.))),
-  employed=FIX(dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=estExpr(selfEmp,sdat=.))),
-  under40=FIX(dat%>%filter(agep<40)%>%group_by(deaf)%>%do(x=estExpr(selfEmp,sdat=.))),
-  under40Employed=FIX(dat%>%filter(agep<40,employment=='Employed')%>%group_by(deaf)%>%do(x=estExpr(selfEmp,sdat=.))))
+selfEmp1 <- list(
+  overall= dat%>%group_by(deaf)%>%do(x=estExpr(selfEmp,sdat=.)),
+  employed=dat%>%filter(employment=='Employed')%>%group_by(deaf)%>%do(x=estExpr(selfEmp,sdat=.)),
+  under40=dat%>%filter(agep<40)%>%group_by(deaf)%>%do(x=estExpr(selfEmp,sdat=.)),
+  under40Employed=dat%>%filter(agep<40,employment=='Employed')%>%group_by(deaf)%>%do(x=estExpr(selfEmp,sdat=.)))
+selfEmp <- do.call('rbind',lapply(selfEmp1,FIXsig,med=TRUE))
 names(selfEmp)[2] <- '% Self Employed'
 
 
 
-medEarnBizOwner <- rbind(
-  bizOwner=FIX(dat%>%filter(fulltime,bizOwner)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))),
-  bizOwnerUnder40=FIX(dat%>%filter(fulltime,bizOwner,agep<40)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))),
-  selfEmp=FIX(dat%>%filter(fulltime,selfEmp)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))),
-  selfEmpUnder40=FIX(dat%>%filter(fulltime,selfEmp,agep<40)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.))))
+medEarnBizOwner1 <- list(
+  bizOwner=dat%>%filter(fulltime,bizOwner)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.)),
+  bizOwnerUnder40=dat%>%filter(fulltime,bizOwner,agep<40)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.)),
+  selfEmp=dat%>%filter(fulltime,selfEmp)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.)),
+  selfEmpUnder40=dat%>%filter(fulltime,selfEmp,agep<40)%>%group_by(deaf)%>%do(x=med(~pernp,sdat=.)))
+medEarnBizOwner <- do.call('rbind',lapply(medEarnBizOwner1,FIXsig,med=TRUE))
 names(medEarnBizOwner) <- c('','Median Earnings','SE','n')
 
 selfEmployment=list(`Owns Business`=bizOwner,`Self Employed`=selfEmp,`Earnings by Self Employment`=medEarnBizOwner)
@@ -148,7 +260,7 @@ selfEmployment=list(`Owns Business`=bizOwner,`Self Employed`=selfEmp,`Earnings b
 popBreakdown <- list(
     percentDeaf=factorProps('deaf',dat),
     byAge=FIX(dat%>%group_by(deaf)%>%do(x=factorProps('Age',.))),
-    bySex=FIX(dat%>%group_by(deaf)%>%do(x=factorProps('sex',.))),
+    bySex=FIX(dat%>%group_by(deaf)%>%do(x=factorProps('Sex',.))),
     byRace=FIX(dat%>%group_by(deaf)%>%do(x=factorProps('raceEth',.))),
     byDiss=rbind(
         FIX2(dat%>%group_by(deaf)%>%do(x=factorProps('diss',.))),
@@ -247,3 +359,22 @@ ggplot(ernByAgeMean,aes(Age,mean_earnings,color=deaf,group=deaf))+geom_smooth()+
 ggsave('earningsByAgeMean.jpg')
 
 
+### test (log) earnings disparities
+
+mod0 <- lm(log(pernp)~deaf+as.factor(agep)+fodBig,data=dat,weights=pwgtp,subset=pernp>0&attain>="Bachelors degree")
+betas <- matrix(nrow=length(coef(mod0)),ncol=80)
+
+for(i in 1:80){
+  cat(i,' ')
+  dat$wrep <- dat[[paste0('pwgtp',i)]]
+  dat$wrep[dat$wrep<0] <- 0
+  betas[,i] <- coef(update(mod0,weights=wrep))
+}
+beta0 <- coef(mod0)
+se <- sapply(1:length(beta0),function(i) sqrt(mean((betas[i,]-beta0[i])^2)*4))
+T <- beta0/se
+pval <- 2*pnorm(-abs(T))
+
+print(cbind(beta0,se,T,pval)[1:4,])
+
+save(attainment1,employment1,medianEarnings1,bizOwner1,selfEmp1,medEarnBizOwner1,mod0,betas,file='results.RData')
