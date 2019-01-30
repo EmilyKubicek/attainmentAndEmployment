@@ -440,4 +440,4 @@ pval <- 2*pnorm(-abs(T))
 print(cbind(beta0,se,T,pval)[1:4,])
 
 
-save(attainment1,employment1,medianEarnings1,bizOwner1,selfEmp1,medEarnBizOwner1,mod0,betas,file='results.RData')
+save(setdiff(ls(),'dat'),file='results.RData')
