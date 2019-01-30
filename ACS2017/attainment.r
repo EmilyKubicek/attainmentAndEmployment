@@ -2,12 +2,19 @@ library(dplyr)
 library(broom)
 library(ggplot2)
 
+if(exists('dat')) print('using dataset "dat" already in workspace')
+
 if(!exists("dat")){
-    if('attainmentEmploymentDataACS17.RData'%in%list.files()){
-        load('attainmentEmploymentDataACS17.RData')
-    } else source('makeData.r')
+  if('attainmentEmploymentDataACS17.RData'%in%list.files()){
+    print('loading attainmentEmploymentDataACS17.RData from folder')
+    load('attainmentEmploymentDataACS17.RData')
+  } else{
+    print('running makeData.r')
+    source('makeData.r')
+  }
 }
-print(xtabs(~Sex,data=dat))
+
+print(xtabs(~raceEth+attainCum+Sex,data=dat))
 
 source('../generalCode/estimationFunctions.r')
 source('../generalCode/median.r')
@@ -235,7 +242,7 @@ ggsave('employmentByAge.jpg')
 
 ### basically just extract info from 'employment'
 inLaborForce <-
-  lapply(employment,
+  lapply(employment[sapply(employment,ncol)>11],
     function(x)
       setNames(
         data.frame(x[,seq(ncol(x)-11)],
