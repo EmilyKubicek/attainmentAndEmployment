@@ -224,7 +224,7 @@ openxlsx::write.xlsx(list(employmentByIndustry=employmentByIndustry,
 ###############
 empByAge <- FIX(dat%>%group_by(deaf,agep)%>%do(x=estExpr(employment=="Employed",sdat=.)))
 names(empByAge)[1:2] <- c('deaf','Age')
-openxlsx::write.xlsx(list(empByAge=empByAge), info=info),'EmploymentByAge2017.xlsx')
+openxlsx::write.xlsx(list(empByAge=empByAge, info=info),'EmploymentByAge2017.xlsx')
 
 ggplot(empByAge,aes(Age,est,color=deaf,group=deaf))+geom_smooth()+labs(color=NULL,y='% Employed')
 ggsave('employmentByAge.jpg')
