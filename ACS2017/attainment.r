@@ -446,5 +446,24 @@ pval <- 2*pnorm(-abs(T))
 
 print(cbind(beta0,se,T,pval)[1:4,])
 
+### what about only full-time employed & fodSmall?
+mod0 <- lm(log(pernp)~deaf+as.factor(agep)+fodSmall,data=dat,weights=pwgtp,
+  subset=pernp>0&attain>="Bachelors degree"&fulltime)
+betas <- matrix(nrow=length(coef(mod0)),ncol=80)
 
-save(setdiff(ls(),'dat'),file='results.RData')
+for(i in 1:80){
+  cat(i,' ')
+  dat$wrep <- dat[[paste0('pwgtp',i)]]
+  dat$wrep[dat$wrep<0] <- 0
+  betas[,i] <- coef(update(mod0,weights=wrep))
+}
+beta0 <- coef(mod0)
+se <- sapply(1:length(beta0),function(i) sqrt(mean((betas[i,]-beta0[i])^2)*4))
+T <- beta0/se
+pval <- 2*pnorm(-abs(T))
+
+print(cbind(beta0,se,T,pval)[1:4,])
+
+
+
+save(list=setdiff(ls(),'dat'),file='results.RData')
