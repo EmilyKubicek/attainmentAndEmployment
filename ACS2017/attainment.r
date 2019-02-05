@@ -37,7 +37,7 @@ FIXsig1 <- function(tib1,med=FALSE){
 
   sig <- if(med) testsMed(tib1$x[[1]],tib1$x[[2]]) else tests(tib1$x[[1]],tib1$x[[2]])
 
-  out <- as.data.frame(rbind(round(tib1$x[[1]],1),round(tib1$x[[2]],1),round(sig,2)))
+  out <- as.data.frame(rbind(round(tib1$x[[1]],1),round(tib1$x[[2]],1),round(sig,4)))
   v1 <- as.character(tib1[['deaf']])
   out <- cbind(dh=c(v1,'p-val (deaf-hearing)'),out)
   out
@@ -268,6 +268,11 @@ medianEarnings1 <-
                  filter(attainCum>='Bachelors',fulltime)%>%
                  group_by(deaf,fodSmall)%>%
                  do(x=med(~pernp,sdat=.)),
+             byAttainmentBA=
+               dat%>%
+               filter(fulltime)%>%
+               group_by(deaf,attainBA)%>%
+               do(x=med(~pernp,sdat=.)),
              `Field of Degree (big)`=
                  dat%>%
                  filter(attainCum>='Bachelors',fulltime)%>%
@@ -296,6 +301,26 @@ openxlsx::write.xlsx(ernByAge,'medianEarningsByAgeFullTime2017.xlsx')
 
 ggplot(ernByAge,aes(Age,median_earnings,color=deaf,group=deaf))+geom_smooth()+labs(color=NULL,y='Median Earnings (Full-Time Employed)')
 ggsave('earningsByAge.jpg')
+
+## correlations?
+### want spearman correlation... too complicated w/ survey weights
+### just do w/o weights
+cors <- dat%>%filter(fulltime)%>%group_by(deaf)%>%
+  summarize(corr=cor(agep,pernp,method='spearman'),n=n())
+
+fisherz <- function(x) 0.5*log((1+x)/(1-x))
+corTest <- ttest(
+  fisherz(cors$corr[1]),
+  fisherz(cors$corr[2]),
+  1/(cors$n[1]-3),
+  1/(cors$n[2]-3))
+
+sink('earningsAgeCorrelation.txt')
+cat('Spearman Correlation btw Earnings and Age\n (not survey-weighted)\n')
+print(as.data.frame(cors))
+cat('p-value for difference:\n')
+cat(signif(corTest,2))
+sink()
 
 ## mean earnings by age
 ernByAgeMean <- FIX(dat%>%filter(fulltime)%>%group_by(deaf,agep)%>%do(x=estSEstr('pernp',sdat=.)))
@@ -406,8 +431,41 @@ popBreakdown[1:4] <- lapply(popBreakdown[1:4],t)
 popBreakdown$info <- info
 openxlsx::write.xlsx(popBreakdown,'populationBreakdown2017.xlsx',rowNames=TRUE,colWidths='auto')
 
+### entertainers
+entD <- estSEstr("naicsp=='711'",sdat=filter(dat,deaf=='deaf',fulltime))
+entDn <- svTot(filter(dat,deaf=='deaf',fulltime),"naicsp=='711'")
+entH <- estSEstr("naicsp=='711'",sdat=filter(dat,deaf=='hearing',fulltime))
+entHn <- svTot(filter(dat,deaf=='hearing',fulltime),"naicsp=='711'")
+sink('entertainers.txt')
+cat("PERFORMING ARTS, SPECTATOR SPORTS, AND RELATED INDUSTRIES","\n\n")
+cat('Percent of deaf full-time workers:\n',round(entD[1]*100,2),'% (',round(entD[2]*100,3),') n=',round(entD[3]),'\n',sep='')
+cat('Number of deaf full-time workers:\n',round(entDn[1]),' (',round(entDn[2],1),') \n\n\n',sep='')
+
+cat('Percent of hearing full-time workers:\n',round(entH[1]*100,2),'% (',round(entH[2]*100,3),') n=',round(entH[3]),'\n',sep='')
+cat('Number of hearing full-time workers:\n',round(entHn[1]),'  (',round(entHn[2],1),')\n',sep='')
+sink()
 
 
+#################################################################################################
+#### top 5 occupations
+#################################################################################################
+jd <- dat%>%filter(deaf=='deaf',fulltime)%>%select(job,pwgtp)
+jh <- dat%>%filter(deaf=='hearing',fulltime)%>%select(job,pwgtp)
+jobD <- sapply(levels(jd$job),
+  function(j) svmean(eval(parse(text=paste0("job=='",j,"'")),jd),jd$pwgtp))
+jobH <- sapply(levels(jh$job),
+  function(j) svmean(eval(parse(text=paste0('job=="',j,'"')),jh),jh$pwgtp))
+
+top5D <- sort(jobD*100,decreasing=TRUE)[1:5]
+top5H <- sort(jobH*100,decreasing=TRUE)[1:5]
+
+sink('top5jobs.txt')
+cat('DEAF\n')
+cat(paste(paste0(names(top5D),' ',round(top5D,1),'%'),collapse='\n'))
+cat('\n\n\n')
+cat('HEARING \n')
+cat(paste(paste0(names(top5H),' ',round(top5H,1),'%'),collapse='\n'))
+sink()
 
 ### this is mostly messing around
 ### test (log) earnings disparities

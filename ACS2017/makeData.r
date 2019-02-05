@@ -2,6 +2,7 @@ library(readr) ## read in the csvs faster
 library(dplyr)
 library(openxlsx)
 states <- read.csv('../generalCode/states.csv')
+jobs <- read.csv('../generalCode/occupations.csv')
 
 #1) a simple breakdown of current enrollment, and completion data, across type of institution (4 year colleges, community colleges, etc) using all the 'type of institution' data we have, so that would give us some nice descriptives and allow us to make a final decision on how we want to categorize 'community colleges and 2-year institutions'
 
@@ -91,10 +92,13 @@ PRF ="Professional Services",
 EDU ="Educational Services",
 MED ="Health Care",
 SCA ="Social Assistance",
-ENT ="Arts, Entertainment, and Recreation; Accommodation and Food Services",
+ENT ="Arts, Entertainment, and Recreation",
 SRV ="Other Services (except Public Administration)",
 ADM ="Public Administration",
 MIL ="Military"))
+
+### separate out travel/food/drink from ENT:
+dat$industry[dat$naicsp%in%c('7211','721M','7224','722Z')] <- "Accommodation and Food Services"
 
 ### aside: print out 3 most common industries in each classification
 indCode$ind <- as.character(indCode$ind)
@@ -147,6 +151,10 @@ sink()
 
 dat$state <- states$abb[match(dat$st,states$x)]
 
+jobs$code <- jobs[,1]
+jobs$occupation <- factor(substr(as.character(jobs$occupation),5,nchar(as.character(jobs$occupation))))
+dat$job <- jobs$occupation[match(as.numeric(dat$occp),jobs$code)]
+
 
 edlevs <- c(
     '<Grade 10',
@@ -187,7 +195,10 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
             ifelse(attain<'Bachelors degree','Associates',
               ifelse(attain<'Masters degree','Bachelors',
                 ifelse(attain<'Doctorate degree','Masters/Professional','PhD')))))),
-           levels=c('No HS','HS Diploma','Some College','Associates','Bachelors','Masters/Professional','PhD')),
+            levels=c('No HS','HS Diploma','Some College','Associates','Bachelors','Masters/Professional','PhD')),
+        attainBA=factor(
+          ifelse(attain<'Bachelors degree','Less than BA',
+            ifelse(attain=='Bachelors degree','BA','>BA'))),
         employment=factor(ifelse(esr%in%c(1,2,4,5),'Employed',
                    ifelse(esr==3,'Unemployed','Not In Labor Force'))),
 
