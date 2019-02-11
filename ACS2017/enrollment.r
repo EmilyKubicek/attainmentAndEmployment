@@ -105,7 +105,7 @@ bySex <- FIXsig(dat%>%group_by(deaf,Sex)%>%do(x=estSEstr('enrolledPS',sdat=.)))
 byRace <- FIXsig(dat%>%group_by(deaf,raceEth)%>%do(x=estSEstr('enrolledPS',sdat=.)))
 byRaceSex <- FIXsig(dat%>%group_by(deaf,raceEth,Sex)%>%do(x=estSEstr('enrolledPS',sdat=.)))
 
-tot <- cbind(overall$est,bySex$est[bySex[[1]]=='Male'],bySex$est[bySex[[1]]=='Female'])
+tot <- cbind(overall$est,bySex$est[bySex$Sex=='Male'],bySex$est[bySex$Sex=='Female'])
 rownames(tot) <- c('Deaf','Hearing','p-value')
 colnames(tot) <- c('All','Male','Female')
 tot[1:2,] <- tot[1:2,]*100
@@ -150,11 +150,11 @@ info <- data.frame(c('Dataset: ACS',
                    stringsAsFactors=FALSE)
 
 
-openxlsx::write.xlsx(list(overall=overall,bySex=bySex,byRaceSex=byRaceSex,byDiss=byDiss,byDissSex=byDissSex,byBlindSex=byBlindSex,info=info),file='fullResultsEnrollment.xlsx',row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(list(overall=overall,bySex=bySex,byRaceSex=byRaceSex,byDiss=byDiss,byDissSex=byDissSex,byBlindSex=byBlindSex,info=info),file='post-secondary enrollment/fullResultsEnrollment.xlsx',row.names=TRUE,col.names=TRUE)
 
-openxlsx::write.xlsx(c(smallTabs,info=info),file='niceTabsRaceEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
-openxlsx::write.xlsx(c(smallTabsDiss,info=info),file='niceTabsDissEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
-openxlsx::write.xlsx(c(smallTabsBlind,info=info),file='niceTabsBlindEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(c(smallTabs,info=info),file='post-secondary enrollment/niceTabsRaceEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(c(smallTabsDiss,info=info),file='post-secondary enrollment/niceTabsDissEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(c(smallTabsBlind,info=info),file='post-secondary enrollment/niceTabsBlindEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
 
 
 dat$enr <- dat$enrolled=='enrolled'
@@ -174,7 +174,7 @@ smallTabs2 <- sapply(unique(dat$raceEth),
 
 
 byDiss2 <- FIXsig(dat%>%group_by(deaf,diss)%>%do(x=estSEstr('enr',sdat=.)))
-byDissSex2 <- FIXsig(dat%>%group_by(deaf,diss,Sex2)%>%do(x=estSEstr('enr',sdat=.)))
+byDissSex2 <- FIXsig(dat%>%group_by(deaf,diss,Sex)%>%do(x=estSEstr('enr',sdat=.)))
 
 byBlind2 <- FIXsig(dat%>%group_by(deaf,blind)%>%do(x=estSEstr('enr',sdat=.)))
 byBlindSex2 <- FIXsig(dat%>%group_by(deaf,blind,Sex)%>%do(x=estSEstr('enr',sdat=.)))
@@ -195,11 +195,11 @@ info2 <- data.frame(c('Dataset: ACS',
                    stringsAsFactors=FALSE)
 
 
-openxlsx::write.xlsx(list(overall=overall2,bySex=bySex2,byRaceSex=byRaceSex2,byDiss=byDiss2,byDissSex=byDissSex2,byBlindSex=byBlindSex2,info=info2),file='fullResultsAnyEnrollment.xlsx',row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(list(overall=overall2,bySex=bySex2,byRaceSex=byRaceSex2,byDiss=byDiss2,byDissSex=byDissSex2,byBlindSex=byBlindSex2,info=info2),file='any enrollment/fullResultsAnyEnrollment.xlsx',row.names=TRUE,col.names=TRUE)
 
-openxlsx::write.xlsx(c(smallTabs2,info=info),file='niceTabsRaceAnyEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
-openxlsx::write.xlsx(c(smallTabsDiss2,info=info),file='niceTabsDissAnyEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
-openxlsx::write.xlsx(c(smallTabsBlind2,info=info),file='niceTabsBlindAnyEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(c(smallTabs2,info=info),file='any enrollment/niceTabsRaceAnyEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(c(smallTabsDiss2,info=info),file='any enrollment/niceTabsDissAnyEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(c(smallTabsBlind2,info=info),file='any enrollment/niceTabsBlindAnyEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
 
 
 save(list=setdiff(ls(),'dat'),file='resultsEnr.RData')
