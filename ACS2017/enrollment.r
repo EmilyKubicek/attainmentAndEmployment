@@ -1,5 +1,4 @@
 library(dplyr)
-library(broom)
 library(ggplot2)
 
 if(exists('dat')) print('using dataset "dat" already in workspace')
@@ -128,6 +127,8 @@ makeSmallTab <- function(oa,gen){
 smallTabs <- sapply(unique(dat$raceEth),
   function(rr) makeSmallTab(subset(byRace,raceEth==rr),subset(byRaceSex,raceEth==rr)),simplify=FALSE)
 
+smallTabs <- lapply(sort(names(smallTabs)), function(nn) cbind(c(nn,'',''),rbind(round(smallTabs[[nn]][1:2,],1),'')))
+smallTabs <- do.call('rbind',smallTabs)
 
 byDiss <- FIXsig(dat%>%group_by(deaf,diss)%>%do(x=estSEstr('enrolledPS',sdat=.)))
 byDissSex <- FIXsig(dat%>%group_by(deaf,diss,Sex)%>%do(x=estSEstr('enrolledPS',sdat=.)))
@@ -148,11 +149,11 @@ info <- data.frame(c('Dataset: ACS',
                      'Enrollment=Post-secondary Enrollment'
                      ),
                    stringsAsFactors=FALSE)
+names(info) <- NULL
 
+openxlsx::write.xlsx(list(overall=overall,bySex=bySex,byRace=byRace,byRaceSex=byRaceSex,byDiss=byDiss,byDissSex=byDissSex,byBlindSex=byBlindSex,info=info),file='post-secondary enrollment/fullResultsEnrollment.xlsx',row.names=TRUE,col.names=TRUE)
 
-openxlsx::write.xlsx(list(overall=overall,bySex=bySex,byRaceSex=byRaceSex,byDiss=byDiss,byDissSex=byDissSex,byBlindSex=byBlindSex,info=info),file='post-secondary enrollment/fullResultsEnrollment.xlsx',row.names=TRUE,col.names=TRUE)
-
-openxlsx::write.xlsx(c(smallTabs,info=info),file='post-secondary enrollment/niceTabsRaceEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
+openxlsx::write.xlsx(list(smallTabs,info=info),file='post-secondary enrollment/niceTabsRaceEnrollment.xlsx',row.names=TRUE,col.names=TRUE)
 openxlsx::write.xlsx(c(smallTabsDiss,info=info),file='post-secondary enrollment/niceTabsDissEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
 openxlsx::write.xlsx(c(smallTabsBlind,info=info),file='post-secondary enrollment/niceTabsBlindEnrollment.xlsx',,row.names=TRUE,col.names=TRUE)
 
