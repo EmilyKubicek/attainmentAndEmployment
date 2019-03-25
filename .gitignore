@@ -1,0 +1,27 @@
+*#
+.Rhistory
+*.RData
+*.xlsx
+*.zip
+*.r~
+*.gsheet
+*.xls
+*.gdoc
+*.csv~
+*.ini
+*.jpg
+*~
+
+generalCode/*
+
+ACS readin.R
+ACS2017/codes.csv
+ACS2017/common industries by category.txt
+ACS2017/earningsAgeCorrelation.txt
+ACS2017/emacs_backtrace.txt
+ACS2017/entertainers.txt
+ACS2017/tables16o.r
+ACS2017/top5jobs.txt
+ed attain.R
+factor labels.R
+
