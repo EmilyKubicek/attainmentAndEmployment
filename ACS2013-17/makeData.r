@@ -6,7 +6,7 @@ jobs <- read.csv('../generalCode/occupations.csv')
 
 #1) a simple breakdown of current enrollment, and completion data, across type of institution (4 year colleges, community colleges, etc) using all the 'type of institution' data we have, so that would give us some nice descriptives and allow us to make a final decision on how we want to categorize 'community colleges and 2-year institutions'
 
-varNames <- c('SERIALNO','ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','SCHG','SCH','RAC1P','HISP','SEX','PERNP','PINCP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP','COW','RAC3P','RACBLK','ADJINC','NATIVITY','LANX','MAR','JWTR',paste0('PWGTP',1:80))
+varNames <- c('SERIALNO','ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','SCHG','SCH','RAC1P','HISP','SEX','PERNP','PINCP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP','COW','RAC3P','RACBLK','RACASN','RACWHT','ADJINC','NATIVITY','LANX','MAR','JWTR',paste0('PWGTP',1:80))
 
 
 ctypes <- rep('i',length(varNames))
@@ -17,9 +17,9 @@ colTypes <- do.call('cols',as.list(ctypes))
 
 
 dat <- read_csv('../../../data/acs5yr2017/psam_pusa.csv',col_types=colTypes)
-#dim(dat)
-#setdiff(varNames,names(dat))
-#setdiff(names(dat),varNames)
+dim(dat)
+setdiff(varNames,names(dat))
+setdiff(names(dat),varNames)
 
 for(ll in c('b','c','d'))
   dat <- bind_rows(dat,
@@ -109,8 +109,6 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
         selfCare=factor(ifelse(ddrs==1,'Self-Care Difficulty','No Self-Care Difficulty')),
         indLiv=factor(ifelse(dout==1,'Independent Living Difficulty','No Independent Living Difficulty')),
         amb=factor(ifelse(dphy==1,'Ambulatory Difficulty','No Ambulatory Difficulty')),
-        servDis=factor(ifelse(is.na(dratx),'Not Vet',
-                       ifelse(dratx==1,'Vet. Service Connected Disability','No Service Connected Disability'))),
         cogDif=factor(ifelse(drem==1,'Cognitive Difficulty','No Cognitive Difficulty')),
         deaf=factor(ifelse(dear==1,'deaf','hearing')),
         Age=ordered(ifelse(agep<35,'25-34',
@@ -140,7 +138,7 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
                 ifelse(rac1p%in%c(3,4,5),'American Indian',
                 ifelse(rac1p==1,"White","Other"))))))),
 
-        diss=ifelse(ddrs==1|deye==1|dout==1|dphy==1|(!is.na(dratx)&dratx==1)|drem==1,'disabled','nondisabled'),
+        diss=ifelse(ddrs==1|deye==1|dout==1|dphy==1|drem==1,'disabled','nondisabled'),
         blind=ifelse(deye==1,'blind','seeing'),
 
         Sex=ifelse(sex==1,'Male','Female'),
@@ -148,11 +146,39 @@ dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
         selfEmp=cow%in%(6:7),
         bizOwner=cow==7,
 
-        liveWkids=ifelse(!is.na(fparc)&(fparc!=4),'Lives w Related Kids',"Doesn't Live w Related Kids")
+        nativity=ifelse(nativity==1,'Native','Foreign born'),
+        lanx=ifelse(lanx==1,'UsesOtherLanguage','JustEnglish'),
+        enrolled=ifelse(is.na(schg),'not enrolled','enrolled'),
+        enrolledPS=!is.na(schg)&(schg>14),
+        enrolledPro=!is.na(schg)&(schg==16)
 
       )
+
+## Separate Black/African American alone vs.
+## Black/African American mixed race
+## Then the following:
+## Black/African American and Latinx
+## Black/African American and Asian
+## Black/African American and white
+
+dat <- mutate(dat,
+  blackORwhite=ifelse(racblk==1,'Black',
+    ifelse(rac1p==1,'White','Other')), ## asymmetry here, as in society
+  blackMulti=ifelse(racblk==1,
+    ifelse(rac1p==2 & hisp==1,'BlackAlone','BlackMulti'),'NotBlack'),
+  blackLatinx=(racblk==1) & (hisp>1),
+  blackAsian=(racblk==1) & (racasn==1),
+  blackANDwhite=(racblk==1) & (racwht==1))
+
+
 
 print(xtabs(~raceEth+Sex,data=dat))
 print(xtabs(~attainCum,data=dat))
 
-save(dat,file='attainmentEmploymentDataACS17.RData')
+print(xtabs(~blackORwhite+blackMulti,dat))
+print(xtabs(~blackMulti+blackLatinx,dat))
+print(xtabs(~blackMulti+blackANDwhite,dat))
+
+print(xtabs(~raceEth+blackMulti,dat))
+
+save(dat,file='attainmentEmploymentDataACS13-17.RData')
