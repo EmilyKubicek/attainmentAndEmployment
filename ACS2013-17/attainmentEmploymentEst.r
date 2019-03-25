@@ -129,21 +129,22 @@ FIX2 <- function(tib){
 
 stand1 <- function(x,FUN,dat,...)
   list(
-    overall=dat%>%group_by(deaf)%>%do(x=FUN(x,.)),
-    byAge=dat%>%group_by(deaf,Age)%>%do(x=FUN(x,.)),
-    bySex=dat%>%group_by(deaf,Sex)%>%do(x=FUN(x,.)),
-    byRace=dat%>%group_by(deaf,raceEth)%>%do(x=FUN(x,.)),
-    byRaceGender=dat%>%group_by(deaf,raceEth,Sex)%>%do(x=FUN(x,.)),
-    byParenthood=dat%>%group_by(deaf,liveWkids)%>%do(x=FUN(x,.)),
+    NationalAverage=dat%>%do(x=FUN(x,.)),
+    overall=dat%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite)%>%do(x=FUN(x,.)),
+    byAge=dat%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite,Age)%>%do(x=FUN(x,.)),
+    bySex=dat%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite,Sex)%>%do(x=FUN(x,.)),
+    byNativity=dat%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite,nativity)%>%do(x=FUN(x,.)),
+    byLanx=dat%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite,lanx)%>%do(x=FUN(x,.)),
+    blackMulti=dat%>%filter(blackMulti!='NotBlack')%>%group_by(deaf,blackMulti)%>%do(x=FUN(x,.)),
+    blackLatinx=dat%>%filter(blackLatinx)%>%group_by(deaf)%>%do(x=FUN(x,.)),
+    blackAsian=dat%>%filter(blackAsian)%>%group_by(deaf)%>%do(x=FUN(x,.)),
     byDiss=list(
-      dat%>%group_by(deaf,diss)%>%do(x=FUN(x,.)),
-      dat%>%group_by(deaf,blind)%>%do(x=FUN(x,.)),
-      dat%>%group_by(deaf,selfCare)%>%do(x=FUN(x,.)),
-      dat%>%group_by(deaf,indLiv)%>%do(x=FUN(x,.)),
-      dat%>%group_by(deaf,amb)%>%do(x=FUN(x,.)),
-      dat%>%group_by(deaf,servDis)%>%do(x=FUN(x,.)),
-      dat%>%group_by(deaf,cogDif)%>%do(x=FUN(x,.))),
-    ...
+       dat%>%group_by(deaf,diss)%>%do(x=FUN(x,.)),
+       dat%>%group_by(deaf,blind)%>%do(x=FUN(x,.)),
+       dat%>%group_by(deaf,selfCare)%>%do(x=FUN(x,.)),
+       dat%>%group_by(deaf,indLiv)%>%do(x=FUN(x,.)),
+       dat%>%group_by(deaf,amb)%>%do(x=FUN(x,.)),
+       dat%>%group_by(deaf,cogDif)%>%do(x=FUN(x,.)))
   )
 
 stand2 <- function(s1,med=FALSE){
@@ -175,6 +176,31 @@ names(info) <- c('')
 #################################################################################################
 
 attainment1 <- stand1('attainCum',factorProps,dat)
+save(attainment1,file='attainment1.RData')
+
+tab1 <- rbind(
+  attainment1$NationalAverage[[1]][[1]],
+  do.call('rbind',attainment1$overall$x))
+
+tab1 <- cbind(race=c('National Average',attainment1$overall$blackORwhite),
+  deaf=c('',as.character(attainment1$overall$deaf)),
+  as.data.frame(round(tab1,1)))
+
+tab1 <- tab1%>%
+  select(-ends_with('SE',ignore.case=FALSE),-contains('No HS'))%>%
+  arrange(match(race,c('National Average','Black','White')))
+
+
+tab2 <- as.data.frame(do.call('rbind',attainment1$byAge$x))
+tab2 <- cbind(race=attainment1$byAge$blackORwhite,
+  deaf=attainment1$byAge$deaf,
+  age=attainment1$byAge$Age,
+  tab2)
+tab2 <- tab2%>%
+  select(-ends_with('SE',ignore.case=FALSE),-contains('No HS'))%>%
+  arrange(race)
+
+
 attainment <- stand2(attainment1)
 
 ## write results to spreadsheet

@@ -178,6 +178,8 @@ print(xtabs(~attainCum,data=dat))
 print(xtabs(~blackORwhite+blackMulti,dat))
 print(xtabs(~blackMulti+blackLatinx,dat))
 print(xtabs(~blackMulti+blackANDwhite,dat))
+print(xtabs(~blackMulti+blackAsian,dat))
+
 
 print(xtabs(~raceEth+blackMulti,dat))
 
