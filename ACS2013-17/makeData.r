@@ -28,6 +28,8 @@ gc()
 
 names(dat) <- tolower(names(dat))
 
+save(dat,file='fullDat.RData')
+
 fodCat <- read.csv('../generalCode/fieldOfDegree/fodCategories.csv')
 dat$fodSmall <- fodCat$small[match(dat$fod1p,fodCat$num)]
 dat$fodBig <- fodCat$big[match(dat$fod1p,fodCat$num)]
@@ -104,7 +106,7 @@ dat$attain <- factor(edlevs[dat$attain],levels=edlevs,ordered=TRUE)
 
 
 
-dat <- dat%>%filter(agep>24,agep<65,relp!=16)%>% ## relp==16 for institutionalized
+dat <- dat%>%filter(agep>17,agep<65,relp!=16)%>% ## relp==16 for institutionalized
     mutate(
         selfCare=factor(ifelse(ddrs==1,'Self-Care Difficulty','No Self-Care Difficulty')),
         indLiv=factor(ifelse(dout==1,'Independent Living Difficulty','No Independent Living Difficulty')),
@@ -180,7 +182,15 @@ print(xtabs(~blackMulti+blackLatinx,dat))
 print(xtabs(~blackMulti+blackANDwhite,dat))
 print(xtabs(~blackMulti+blackAsian,dat))
 
+## enrollment for 18-64; all else for 25-64
+
+
+
 
 print(xtabs(~raceEth+blackMulti,dat))
+
+#datEnr <- dat%>%select(deaf,starts_with('black'),starts_with('enrolled'),starts_with('pwgtp'))
+
+#dat <- filter(dat,agep>24)
 
 save(dat,file='attainmentEmploymentDataACS13-17.RData')
