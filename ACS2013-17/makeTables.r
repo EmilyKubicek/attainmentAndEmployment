@@ -84,7 +84,7 @@ tab5 <- do.call('rbind',lapply(attainment1$byDiss,disTab))%>%
 tab6 <- do.call('cbind',lapply(fod$x, function(y) y[-grep(' SE',names(y))]))
 colnames(tab6) <- paste(fod$deaf,fod$blackORwhite)
 
-openxlsx::write.xlsx(tab6,'fieldOfDegreePercent.xlsx')
+openxlsx::write.xlsx(tab6,'fieldOfDegreePercent.xlsx',row.names=TRUE)
 
 
 ### enrollment table
@@ -98,3 +98,9 @@ enr$n <- sapply(enr$x,function(y) y['n'])
 enr$x <- NULL
 openxlsx::write.xlsx(enr,'enrollment.xlsx')
 
+## overall employment
+emp11 <- do.call('rbind',lapply(emp1$x,function(y) y[-grep(' SE',names(y))]))
+emp1$x <- NULL
+emp1 <- cbind(emp1,emp11)
+
+openxlsx::write.xlsx(emp1,'overallEmployment.xlsx')
