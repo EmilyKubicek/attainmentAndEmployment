@@ -159,9 +159,70 @@ for(vv in c('ddrs','dout','dphy','drem','deye')){
     )
 }
 
+for(dd in names(empDis)[-1]){
+  empDis[[dd]] <- cbind(deaf='deaf',empDis[[dd]]$blackORwhite,diss=dd,empDis[[dd]][,-1])
+  names(empDis[[dd]]) <- names(empDis[[1]])
+}
+empDis[[1]] <- as.data.frame(empDis[[1]])
+
+empDis <- do.call('rbind',empDis)
+
+emp$byDisability <- empDis
+
+
+
+
+### employment/earnings by ed level
+empEd <- sapply(levels(dat$attainCum)[-1],
+  function(edLev)
+    dat%>%filter(blackORwhite!='Other',attainCum>=edLev)%>%
+      group_by(deaf,blackORwhite)%>%
+      mutate(emp=employment=='Employed')%>%
+      summarize(`% Employed`=svmean(emp,pwgtp),
+        `% FT`=svmean(fulltime,pwgtp)),
+  simplify=FALSE)
+
+empEd[['No HS']] <-
+  dat%>%filter(blackORwhite!='Other',attainCum=='No HS')%>%
+   group_by(deaf,blackORwhite)%>%
+   mutate(emp=employment=='Employed')%>%
+   summarize(`% Employed`=svmean(emp,pwgtp),
+    `% FT`=svmean(fulltime,pwgtp))
+
+for(ee in names(empEd)) empEd[[ee]]$edLev <- ee
+
+empEd <- do.call('rbind',empEd)
+
+ernEd <- sapply(levels(dat$attainCum)[-1],
+  function(edLev)
+    dat%>%filter(fulltime, blackORwhite!='Other',attainCum>=edLev)%>%
+      group_by(deaf,blackORwhite)%>%
+      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE)),
+  simplify=FALSE)
+
+ernEd[['No HS']] <-
+   dat%>%filter(fulltime, blackORwhite!='Other',attainCum=='No HS')%>%
+      group_by(deaf,blackORwhite)%>%
+      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE))
+
+for(ee in names(ernEd)) ernEd[[ee]]$edLev <- ee
+
+ernEd <- do.call('rbind',ernEd)
+
+empEd <- full_join(empEd,ernEd)
+
+empEd <- empEd%>%select(deaf,blackORwhite,edLev,everything())
+
+empEd <- rbind(filter(empEd,edLev=='No HS'), filter(empEd,edLev!='No HS'))
+
+emp$byEducation <- empEd
+
 library(openxlsx)
 write.xlsx(emp,file='employmentSubgroups.xlsx')
 
 
-save(emp1,emp,ft,empDis,file='employment.RData')
+save(empEd,emp1,emp,ft,empDis,file='employment.RData')
+
+
+
 
