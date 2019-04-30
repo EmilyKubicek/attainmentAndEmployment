@@ -102,14 +102,10 @@ gc()
 
 emp1 <- dat%>%group_by(deaf,blackORwhite)%>%do(x=factorProps('employment',.))
 
-emp11 <- do.call('rbind',lapply(emp1$x,function(y) y[-grep(' SE',names(y))]))
-emp1$x <- NULL
-emp1 <- cbind(emp1,emp11)
 
-openxlsx::write.xlsx(emp1,'overallEmployment.xlsx')
 
 ft <- dat%>%filter(employment=='Employed')%>%group_by(deaf,blackORwhite)%>%
-  summarize(ft=svmean(.$fulltime,.$pwgtp),pt=1-ft,n=n())
+  summarize(ft=svmean(fulltime,pwgtp),pt=1-ft,n=n())
 
 ft$ft <- ft$ft*100
 ft$pt <- ft$pt*100
@@ -118,16 +114,19 @@ openxlsx::write.xlsx(ft,'fulltimePercentage.xlsx')
 ### employment and fulltime and median wages
 emp <- list()
 
+
+
 for(vv in c('Age','Sex','nativity','lanx'))
   emp[[paste0('by',capitalize(vv))]] <-
     full_join(
       dat%>%filter(blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,!!sym(vv))%>%
-        summarize(`% Employed`=svmean(.$employment=='Employed',.$pwgtp),
-          `% FT`=svmean(.$fulltime,.$pwgtp)),
+        mutate(emp=employment=='Employed')%>%
+        summarize(`% Employed`=svmean(emp,pwgtp),
+          `% FT`=svmean(fulltime,pwgtp)),
       dat%>%filter(fulltime,blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,!!sym(vv))%>%
-        summarize(`Med. Earn (FT)`=med(~pernp,.,se=FALSE))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE))
     )
 
 empDis <- list()
@@ -136,11 +135,12 @@ empDis[['disabled']] <-
   full_join(
       dat%>%filter(blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,diss)%>%
-        summarize(`% Employed`=svmean(.$employment=='Employed',.$pwgtp),
-          `% FT`=svmean(.$fulltime,.$pwgtp)),
+        mutate(emp=employment=='Employed')%>%
+        summarize(`% Employed`=svmean(emp,pwgtp),
+          `% FT`=svmean(fulltime,pwgtp)),
       dat%>%filter(fulltime,blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,diss)%>%
-        summarize(`Med. Earn (FT)`=med(~pernp,.,se=FALSE))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE))
     )
 
 
@@ -150,11 +150,12 @@ for(vv in c('ddrs','dout','dphy','drem','deye')){
     full_join(
       dat%>%filter(blackORwhite!='Other',deaf=='deaf',!!sym(vv)==1)%>%
         group_by(blackORwhite)%>%
-        summarize(`% Employed`=svmean(.$employment=='Employed',.$pwgtp),
-          `% FT`=svmean(.$fulltime,.$pwgtp)),
+        mutate(emp=employment=='Employed')%>%
+        summarize(`% Employed`=svmean(emp,pwgtp),
+          `% FT`=svmean(fulltime,pwgtp)),
       dat%>%filter(fulltime,blackORwhite!='Other',deaf=='deaf',!!sym(vv)==1)%>%
         group_by(blackORwhite)%>%
-        summarize(`Med. Earn (FT)`=med(~pernp,.,se=FALSE))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE))
     )
 }
 
