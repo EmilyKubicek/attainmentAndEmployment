@@ -70,10 +70,11 @@ est1year <- function(yr){
 overTime <- sapply(8:17,est1year,simplify=FALSE)
 
 makeTab <- function(varb){
-  tab <- overTime%>%select(deaf,blackORwhite,sex,!!sym(varb))
+  tab <- overTime[[1]]%>%select(deaf,blackORwhite,sex,!!sym(varb))
   for(i in 2:length(overTime))
     tab <- cbind(tab,overTime[[i]][[varb]])
-  names(tab) <- c('deaf','race','sex',2000+as.numeric(names(overTime)))
+  tab[,4:ncol(tab)] <- tab[,4:ncol(tab)]*100
+  names(tab) <- c('deaf','race','sex',2000+8:17)
   tab
 }
 
