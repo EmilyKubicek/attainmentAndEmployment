@@ -130,6 +130,11 @@ ft$pt <- ft$pt*100
 
 openxlsx::write.xlsx(ft,'fulltimePercentage.xlsx')
 
+ern1 <- dat25%>%filter(fulltime)%>%
+        group_by(deaf,blackORwhite)%>%
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
+
+
 print('emp fulltime end')
 
 ### employment and fulltime and median wages
@@ -280,7 +285,7 @@ bizOwn <- dat25%>%group_by(deaf,blackORwhite)%>%
 
 
 
-save(empEd,emp1,emp,ft,empRace,empDis,ssip,bizOwn,file='employment.RData')
+save(ern1,empEd,emp1,emp,ft,empRace,empDis,ssip,bizOwn,file='employment.RData')
 
 
 
