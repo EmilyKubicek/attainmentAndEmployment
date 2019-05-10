@@ -1,9 +1,16 @@
 library(tidyverse)
 library(reshape2)
 
-if(exists('dat')&min(dat$agep)==18) print('using dataset "dat" already in workspace')
+needDat <- FALSE
+if(!exists("dat")) needDat <- TRUE
+if(exists("dat")) if(min(dat$agep!=18)){
+  print(paste('min age',min(dat$agep)))
+  needDat <- TRUE
+}
 
-if(!exists("dat")|min(dat$agep>18)){
+if(!needDat) print('using dataset "dat" already in workspace')
+
+if(needDat){
   if('attainmentEmploymentDataACS13-17.RData'%in%list.files()){
     print('loading attainmentEmploymentDataACS13-17.RData from folder')
     load('attainmentEmploymentDataACS13-17.RData')
@@ -64,17 +71,6 @@ stand1 <- function(x,FUN,dat,...){
 }
 
 
-### general info to append to spreadsheets
-info <- data.frame(c('Dataset: ACS',
-                     'Year: 2017',
-                     'Ages: 25-64',
-                     'Excludes Institutionalized People',
-                     'Occupational Category for full-time employed people only',
-                     'Field of Degree for people with Bachelors degrees or higher'),
-                   stringsAsFactors=FALSE)
-
-names(info) <- c('')
-
 #################################################################################################
 #### Enrollment
 #################################################################################################
@@ -88,7 +84,7 @@ raceEnr <- dat18%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite)%>
 raceGenderEnr <- dat18%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite,sex)%>%
   do(x=factorProps('enrolled',.,cum=FALSE))
 
-
+print('enrollment end')
 #################################################################################################
 #### Educational attainment
 #################################################################################################
@@ -106,7 +102,7 @@ gc()
 
 gc()
 save(attainment1,fod,overallEnr,raceEnr,raceGenderEnr,file='attainment.RData')
-
+print('attainment end')
 #################################################################################################
 #### Subgroup percentages
 #################################################################################################
@@ -116,7 +112,7 @@ subPer <- lapply(
   c('Age','Sex','nativity','lanx','diss','blind','selfCare','indLiv','amb','cogDif',paste0('black',c('Latinx','Asian','ANDwhite'))),
   function(ss) dat25%>%group_by(deaf,blackORwhite)%>%do(x=factorProps(ss,.,cum=FALSE)))
 
-
+print('subgroup end')
 #################################################################################################
 #### Employment, LFP
 #################################################################################################
@@ -133,6 +129,9 @@ ft$ft <- ft$ft*100
 ft$pt <- ft$pt*100
 
 openxlsx::write.xlsx(ft,'fulltimePercentage.xlsx')
+
+print('emp fulltime end')
+
 ### employment and fulltime and median wages
 emp <- list()
 
@@ -269,9 +268,19 @@ write.xlsx(emp,file='employmentSubgroups.xlsx')
 
 ### ssip
 ssip <- dat25%>%group_by(deaf,blackORwhite)%>%
-  mutate(ssip=ssip>0)%>%summarize(perSSIP=svmean(ssip,pwgtp),n=n(),minAge=min(agep))
+  mutate(ssip=ssip>0)%>%summarize(perSSIP=svmean(ssip,pwgtp)*100,n=n(),minAge=min(agep))
 
-save(empEd,emp1,emp,ft,empRace,empDis,file='employment.RData')
+### business ownership self employment
+bizOwn <- dat25%>%group_by(deaf,blackORwhite)%>%
+  mutate(ssip=ssip>0)%>%
+  summarize(
+    perSelfEmp=svmean(selfEmp,pwgtp)*100,
+    perOwnBiz=svmean(bizOwner,pwgtp)*100,
+    n=n(),minAge=min(agep))
+
+
+
+save(empEd,emp1,emp,ft,empRace,empDis,ssip,bizOwn,file='employment.RData')
 
 
 
