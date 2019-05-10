@@ -1,9 +1,9 @@
 library(tidyverse)
 library(reshape2)
 
-if(exists('dat')) print('using dataset "dat" already in workspace')
+if(exists('dat')&min(dat$agep)==18) print('using dataset "dat" already in workspace')
 
-if(!exists("dat")){
+if(!exists("dat")|min(dat$agep>18)){
   if('attainmentEmploymentDataACS13-17.RData'%in%list.files()){
     print('loading attainmentEmploymentDataACS13-17.RData from folder')
     load('attainmentEmploymentDataACS13-17.RData')
@@ -15,6 +15,8 @@ if(!exists("dat")){
 
 print(xtabs(~raceEth+attainCum+Sex,data=dat))
 print(xtabs(~raceEth+Sex+deaf,data=dat))
+print(xtabs(~st,data=dat))
+print(range(dat$agep))
 source('../generalCode/estimationFunctions.r')
 source('../generalCode/median.r')
 
@@ -73,39 +75,59 @@ info <- data.frame(c('Dataset: ACS',
 
 names(info) <- c('')
 
+#################################################################################################
+#### Enrollment
+#################################################################################################
+stopifnot(min(dat$agep)==18)
+dat18 <- dat
+rm(dat); gc()
+
+overallEnr <- dat18%>%group_by(deaf)%>%do(x=factorProps('enrolled',.,cum=FALSE))
+raceEnr <- dat18%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite)%>%
+  do(x=factorProps('enrolled',.,cum=FALSE))
+raceGenderEnr <- dat18%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite,sex)%>%
+  do(x=factorProps('enrolled',.,cum=FALSE))
 
 
 #################################################################################################
 #### Educational attainment
 #################################################################################################
+gc()
+dat25 <- filter(dat18,agep>24)
+rm(dat18); gc()
 
-attainment1 <- filter(dat,agep>24)%>%stand1('attainCum',factorProps,.)
+attainment1 <- dat25%>%stand1('attainCum',factorProps,.)
 gc()
 ##### Field of degree
-fod <- dat%>%filter(agep>24,blackORwhite!='Other',attainCum>'Associates')%>%group_by(deaf,blackORwhite)%>%
+fod <- dat25%>%filter(blackORwhite!='Other',attainCum>'Associates')%>%group_by(deaf,blackORwhite)%>%
   do(x=factorProps('fodSmall',.,cum=FALSE))
 gc()
 #### current enrollment
-overallEnr <- dat%>%group_by(deaf)%>%do(x=factorProps('enrolled',.,cum=FALSE))
-raceEnr <- dat%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite)%>%
-  do(x=factorProps('enrolled',.,cum=FALSE))
+
 gc()
-save(attainment1,fod,overallEnr,raceEnr,file='attainment.RData')
+save(attainment1,fod,overallEnr,raceEnr,raceGenderEnr,file='attainment.RData')
+
+#################################################################################################
+#### Subgroup percentages
+#################################################################################################
+gc()
+
+subPer <- lapply(
+  c('Age','Sex','nativity','lanx','diss','blind','selfCare','indLiv','amb','cogDif',paste0('black',c('Latinx','Asian','ANDwhite'))),
+  function(ss) dat25%>%group_by(deaf,blackORwhite)%>%do(x=factorProps(ss,.,cum=FALSE)))
 
 
 #################################################################################################
 #### Employment, LFP
 #################################################################################################
 
-dat <- filter(dat,agep>24)
 gc()
-
-emp1 <- dat%>%group_by(deaf,blackORwhite)%>%do(x=factorProps('employment',.))
-
+emp1 <- dat25%>%group_by(deaf,blackORwhite)%>%do(x=factorProps('employment',.))
 
 
-ft <- dat%>%filter(employment=='Employed')%>%group_by(deaf,blackORwhite)%>%
-  summarize(ft=svmean(fulltime,pwgtp),pt=1-ft,n=n())
+
+ft <- dat25%>%filter(employment=='Employed')%>%group_by(deaf,blackORwhite)%>%
+  summarize(ft=svmean(fulltime,pwgtp),pt=1-ft,n=n(),minAge=min(agep))
 
 ft$ft <- ft$ft*100
 ft$pt <- ft$pt*100
@@ -119,28 +141,52 @@ emp <- list()
 for(vv in c('Age','Sex','nativity','lanx'))
   emp[[paste0('by',capitalize(vv))]] <-
     full_join(
-      dat%>%filter(blackORwhite!='Other')%>%
+      dat25%>%filter(blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,!!sym(vv))%>%
         mutate(emp=employment=='Employed')%>%
         summarize(`% Employed`=svmean(emp,pwgtp),
-          `% FT`=svmean(fulltime,pwgtp)),
-      dat%>%filter(fulltime,blackORwhite!='Other')%>%
+          `% FT`=svmean(fulltime,pwgtp),n=n(),minAge=min(agep)),
+      dat25%>%filter(fulltime,blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,!!sym(vv))%>%
-        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
     )
+
+
+empRace <- dat25%>%filter(deaf=='deaf')%>%
+  mutate(emp=employment=='Employed')%>%
+  group_by(blackMulti)%>%
+        summarize(`% Employed`=svmean(emp,pwgtp),
+          `% FT`=svmean(fulltime,pwgtp),
+          `Med. Earn (FT)`=med1(pernp[fulltime],pwgtp[fulltime],se=FALSE),
+          n=n(),minAge=min(agep))
+
+for(rr in paste0('black',c('Latinx','Asian','ANDwhite')))
+  empRace <- bind_rows(empRace,
+    dat25%>%filter(deaf=='deaf',!!sym(rr)==1)%>%
+      mutate(emp=employment=='Employed')%>%
+      summarize(`% Employed`=svmean(emp,pwgtp),
+          `% FT`=svmean(fulltime,pwgtp),
+          `Med. Earn (FT)`=med1(pernp[fulltime],pwgtp[fulltime],se=FALSE),
+          n=n(),n=n(),minAge=min(agep))%>%
+      mutate(blackMulti=rr))
+
+
+emp$byRace <- empRace
+
+
 
 empDis <- list()
 
 empDis[['disabled']] <-
   full_join(
-      dat%>%filter(blackORwhite!='Other')%>%
+      dat25%>%filter(blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,diss)%>%
         mutate(emp=employment=='Employed')%>%
         summarize(`% Employed`=svmean(emp,pwgtp),
-          `% FT`=svmean(fulltime,pwgtp)),
-      dat%>%filter(fulltime,blackORwhite!='Other')%>%
+          `% FT`=svmean(fulltime,pwgtp),n=n(),minAge=min(agep)),
+      dat25%>%filter(fulltime,blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,diss)%>%
-        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
     )
 
 
@@ -148,16 +194,17 @@ for(vv in c('ddrs','dout','dphy','drem','deye')){
   nm <- c(ddrs='selfCare',dout='indLiv',dphy='amb',drem='cogDif',deye='blind')[vv]
   empDis[[nm]] <-
     full_join(
-      dat%>%filter(blackORwhite!='Other',deaf=='deaf',!!sym(vv)==1)%>%
+      dat25%>%filter(blackORwhite!='Other',deaf=='deaf',!!sym(vv)==1)%>%
         group_by(blackORwhite)%>%
         mutate(emp=employment=='Employed')%>%
         summarize(`% Employed`=svmean(emp,pwgtp),
-          `% FT`=svmean(fulltime,pwgtp)),
-      dat%>%filter(fulltime,blackORwhite!='Other',deaf=='deaf',!!sym(vv)==1)%>%
+          `% FT`=svmean(fulltime,pwgtp),n=n(),minAge=min(agep)),
+      dat25%>%filter(fulltime,blackORwhite!='Other',deaf=='deaf',!!sym(vv)==1)%>%
         group_by(blackORwhite)%>%
-        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
     )
 }
+
 
 for(dd in names(empDis)[-1]){
   empDis[[dd]] <- cbind(deaf='deaf',empDis[[dd]]$blackORwhite,diss=dd,empDis[[dd]][,-1])
@@ -173,37 +220,37 @@ emp$byDisability <- empDis
 
 
 ### employment/earnings by ed level
-empEd <- sapply(levels(dat$attainCum)[-1],
+empEd <- sapply(levels(dat25$attainCum)[-1],
   function(edLev)
-    dat%>%filter(blackORwhite!='Other',attainCum>=edLev)%>%
+    dat25%>%filter(blackORwhite!='Other',attainCum>=edLev)%>%
       group_by(deaf,blackORwhite)%>%
       mutate(emp=employment=='Employed')%>%
       summarize(`% Employed`=svmean(emp,pwgtp),
-        `% FT`=svmean(fulltime,pwgtp)),
+        `% FT`=svmean(fulltime,pwgtp),n=n(),minAge=min(agep)),
   simplify=FALSE)
 
 empEd[['No HS']] <-
-  dat%>%filter(blackORwhite!='Other',attainCum=='No HS')%>%
+  dat25%>%filter(blackORwhite!='Other',attainCum=='No HS')%>%
    group_by(deaf,blackORwhite)%>%
    mutate(emp=employment=='Employed')%>%
    summarize(`% Employed`=svmean(emp,pwgtp),
-    `% FT`=svmean(fulltime,pwgtp))
+    `% FT`=svmean(fulltime,pwgtp),n=n(),minAge=min(agep))
 
 for(ee in names(empEd)) empEd[[ee]]$edLev <- ee
 
 empEd <- do.call('rbind',empEd)
 
-ernEd <- sapply(levels(dat$attainCum)[-1],
+ernEd <- sapply(levels(dat25$attainCum)[-1],
   function(edLev)
-    dat%>%filter(fulltime, blackORwhite!='Other',attainCum>=edLev)%>%
+    dat25%>%filter(fulltime, blackORwhite!='Other',attainCum>=edLev)%>%
       group_by(deaf,blackORwhite)%>%
-      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE)),
+      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep)),
   simplify=FALSE)
 
 ernEd[['No HS']] <-
-   dat%>%filter(fulltime, blackORwhite!='Other',attainCum=='No HS')%>%
+   dat25%>%filter(fulltime, blackORwhite!='Other',attainCum=='No HS')%>%
       group_by(deaf,blackORwhite)%>%
-      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE))
+      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
 
 for(ee in names(ernEd)) ernEd[[ee]]$edLev <- ee
 
@@ -220,8 +267,11 @@ emp$byEducation <- empEd
 library(openxlsx)
 write.xlsx(emp,file='employmentSubgroups.xlsx')
 
+### ssip
+ssip <- dat25%>%group_by(deaf,blackORwhite)%>%
+  mutate(ssip=ssip>0)%>%summarize(perSSIP=svmean(ssip,pwgtp),n=n(),minAge=min(agep))
 
-save(empEd,emp1,emp,ft,empDis,file='employment.RData')
+save(empEd,emp1,emp,ft,empRace,empDis,file='employment.RData')
 
 
 
