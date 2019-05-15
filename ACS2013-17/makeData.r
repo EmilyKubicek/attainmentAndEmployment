@@ -28,12 +28,17 @@ gc()
 
 names(dat) <- tolower(names(dat))
 
+print(mem_used())
+
 save(dat,file='fullDat.RData')
 
+gc()
+
+print(dim(dat))
 fodCat <- read.csv('../generalCode/fieldOfDegree/fodCategories.csv')
 dat$fodSmall <- fodCat$small[match(dat$fod1p,fodCat$num)]
 dat$fodBig <- fodCat$big[match(dat$fod1p,fodCat$num)]
-
+print(dim(dat))
 
 ### Taken from factor labels.R (mark bond):
 indCode <- read.csv('../generalCode/naicsCodes.csv') ## copied from data dictionary
@@ -41,6 +46,8 @@ indCode <- read.csv('../generalCode/naicsCodes.csv') ## copied from data diction
 indCode$ind2 <- substr(indCode$ind,1,3)
 
 dat$industry <- indCode$ind2[match(dat$naicsp,indCode$code)]
+
+print(dim(dat))
 
 dat$industry <- plyr::revalue(dat$industry, c(
 AGR ="Agriculture, Forestry, Fishing and Hunting",
@@ -78,12 +85,18 @@ for(ind in unique(na.omit(dat$industry))){
 }
 sink()
 
+print(dim(dat))
 
 dat$state <- states$abb[match(dat$st,states$x)]
 
+print(dim(dat))
+
 jobs$code <- jobs[,1]
-jobs$occupation <- factor(substr(as.character(jobs$occupation),5,nchar(as.character(jobs$occupation))))
-dat$job <- jobs$occupation[match(as.numeric(dat$occp),jobs$code)]
+jobs$job <- factor(substr(as.character(jobs$occupation),5,nchar(as.character(jobs$occupation))))
+dat$occpN <- as.numeric(dat$occp)
+dat <- full_join(dat,jobs,by=c("occpN"="code"))
+
+print(dim(dat))
 
 
 edlevs <- c(
@@ -104,8 +117,8 @@ edlevs <- c(
 dat$attain <- ifelse(dat$schl<13,1,dat$schl-11)
 dat$attain <- factor(edlevs[dat$attain],levels=edlevs,ordered=TRUE)
 
-
-
+print(mem_used())
+print('filtering on age and relp')
 dat <- dat%>%filter(agep>17,agep<65,relp!=16)%>% ## relp==16 for institutionalized
     mutate(
         selfCare=factor(ifelse(ddrs==1,'Self-Care Difficulty','No Self-Care Difficulty')),
@@ -155,6 +168,8 @@ dat <- dat%>%filter(agep>17,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
         enrolledPro=!is.na(schg)&(schg==16)
 
       )
+gc()
+print(mem_used())
 
 ## Separate Black/African American alone vs.
 ## Black/African American mixed race
@@ -171,6 +186,11 @@ dat <- mutate(dat,
   blackLatinx=(racblk==1) & (hisp>1),
   blackAsian=(racblk==1) & (racasn==1),
   blackANDwhite=(racblk==1) & (racwht==1))
+
+print(dim(dat))
+
+gc()
+
 
 
 
@@ -192,5 +212,7 @@ print(xtabs(~raceEth+blackMulti,dat))
 #datEnr <- dat%>%select(deaf,starts_with('black'),starts_with('enrolled'),starts_with('pwgtp'))
 
 #dat <- filter(dat,agep>24)
+gc()
+print(mem_used())
 
 save(dat,file='attainmentEmploymentDataACS13-17.RData')

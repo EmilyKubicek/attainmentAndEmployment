@@ -70,6 +70,12 @@ stand1 <- function(x,FUN,dat,...){
   out
 }
 
+### simple tibble-of-lists to data.frame function:
+ff <- function(tt){
+  out <- cbind(select(tt,-x),do.call('rbind',tt$x))
+  out[,-grep(' SE',colnames(out))]
+}
+
 
 #################################################################################################
 #### Enrollment
@@ -83,6 +89,14 @@ raceEnr <- dat18%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite)%>
   do(x=factorProps('enrolled',.,cum=FALSE))
 raceGenderEnr <- dat18%>%filter(blackORwhite!='Other')%>%group_by(deaf,blackORwhite,sex)%>%
   do(x=factorProps('enrolled',.,cum=FALSE))
+
+enr <- bind_rows(overallEnr,raceEnr,raceGenderEnr)
+## SEX         Character   1
+## Sex
+##             1    .Male
+##             2    .Female
+enr$sex <- c('Male','Female')[enr$sex]
+write.xlsx(ff(enr),'enrollment.xlsx')
 
 print('enrollment end')
 #################################################################################################
@@ -108,9 +122,35 @@ print('attainment end')
 #################################################################################################
 gc()
 
-subPer <- lapply(
-  c('Age','Sex','nativity','lanx','diss','blind','selfCare','indLiv','amb','cogDif',paste0('black',c('Latinx','Asian','ANDwhite'))),
+subgroups <- c('Age','Sex','nativity','lanx','diss','blind','selfCare','indLiv','amb','cogDif')
+subPer <- lapply(subgroups,
   function(ss) dat25%>%group_by(deaf,blackORwhite)%>%do(x=factorProps(ss,.,cum=FALSE)))
+
+subPer <- sapply(subPer,function(dd){
+  dd <- cbind(dd[,-which(names(dd)=='x')],do.call('rbind',dd$x))
+  dd[,-grep(' SE',names(dd),fixed=TRUE)]
+},
+simplify=FALSE)
+
+names(subPer) <- subgroups
+
+for(gg in paste0('black',c('Latinx','Asian','ANDwhite'))){
+  subPer[[gg]] <- dat25%>%filter(blackORwhite=='Black')%>%
+    group_by(deaf)%>%summarize(blackORwhite=blackORwhite[1],x=svmean(!!sym(gg),pwgtp)*100,n=n())
+  names(subPer[[gg]])[names(subPer[[gg]])=='x'] <- paste('%',gg)
+}
+
+
+
+subPer2 <- subPer[[1]]
+for(i in 2:length(subPer)) subPer2 <- full_join(subPer2,subPer[[i]])
+
+nnn <- subPer2$n
+subPer2$n <- NULL
+subPer2 <- cbind(subPer2,n=nnn)
+
+subPer2 <- t(subPer2)
+write.xlsx(subPer2,'subgroupPercentages.xlsx',row.names=TRUE,col.names=FALSE)
 
 print('subgroup end')
 #################################################################################################
@@ -119,7 +159,7 @@ print('subgroup end')
 
 gc()
 emp1 <- dat25%>%group_by(deaf,blackORwhite)%>%do(x=factorProps('employment',.))
-
+emp1 <- bind_cols(emp1%>%select(-x),as_tibble(do.call('rbind',emp1$x)))
 
 
 ft <- dat25%>%filter(employment=='Employed')%>%group_by(deaf,blackORwhite)%>%
@@ -134,6 +174,7 @@ ern1 <- dat25%>%filter(fulltime)%>%
         group_by(deaf,blackORwhite)%>%
         summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
 
+write.xlsx(ern1,'FTearningsOverall.xlsx')
 
 print('emp fulltime end')
 
@@ -152,7 +193,7 @@ for(vv in c('Age','Sex','nativity','lanx'))
           `% FT`=svmean(fulltime,pwgtp),n=n(),minAge=min(agep)),
       dat25%>%filter(fulltime,blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,!!sym(vv))%>%
-        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),nFT=n(),minAge=min(agep))
     )
 
 
@@ -171,7 +212,7 @@ for(rr in paste0('black',c('Latinx','Asian','ANDwhite')))
       summarize(`% Employed`=svmean(emp,pwgtp),
           `% FT`=svmean(fulltime,pwgtp),
           `Med. Earn (FT)`=med1(pernp[fulltime],pwgtp[fulltime],se=FALSE),
-          n=n(),n=n(),minAge=min(agep))%>%
+          n=n(),minAge=min(agep))%>%
       mutate(blackMulti=rr))
 
 
@@ -190,7 +231,7 @@ empDis[['disabled']] <-
           `% FT`=svmean(fulltime,pwgtp),n=n(),minAge=min(agep)),
       dat25%>%filter(fulltime,blackORwhite!='Other')%>%
         group_by(deaf,blackORwhite,diss)%>%
-        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),nFT=n(),minAge=min(agep))
     )
 
 
@@ -205,7 +246,7 @@ for(vv in c('ddrs','dout','dphy','drem','deye')){
           `% FT`=svmean(fulltime,pwgtp),n=n(),minAge=min(agep)),
       dat25%>%filter(fulltime,blackORwhite!='Other',deaf=='deaf',!!sym(vv)==1)%>%
         group_by(blackORwhite)%>%
-        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
+        summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),nFT=n(),minAge=min(agep))
     )
 }
 
@@ -248,13 +289,13 @@ ernEd <- sapply(levels(dat25$attainCum)[-1],
   function(edLev)
     dat25%>%filter(fulltime, blackORwhite!='Other',attainCum>=edLev)%>%
       group_by(deaf,blackORwhite)%>%
-      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep)),
+      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),nFT=n(),minAge=min(agep)),
   simplify=FALSE)
 
 ernEd[['No HS']] <-
    dat25%>%filter(fulltime, blackORwhite!='Other',attainCum=='No HS')%>%
       group_by(deaf,blackORwhite)%>%
-      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),n=n(),minAge=min(agep))
+      summarize(`Med. Earn (FT)`=med1(pernp,pwgtp,se=FALSE),nFT=n(),minAge=min(agep))
 
 for(ee in names(ernEd)) ernEd[[ee]]$edLev <- ee
 
@@ -275,6 +316,9 @@ write.xlsx(emp,file='employmentSubgroups.xlsx')
 ssip <- dat25%>%group_by(deaf,blackORwhite)%>%
   mutate(ssip=ssip>0)%>%summarize(perSSIP=svmean(ssip,pwgtp)*100,n=n(),minAge=min(agep))
 
+write.xlsx(ssip,'ssip.xlsx')
+
+
 ### business ownership self employment
 bizOwn <- dat25%>%group_by(deaf,blackORwhite)%>%
   mutate(ssip=ssip>0)%>%
@@ -283,11 +327,49 @@ bizOwn <- dat25%>%group_by(deaf,blackORwhite)%>%
     perOwnBiz=svmean(bizOwner,pwgtp)*100,
     n=n(),minAge=min(agep))
 
-
+write.xlsx(bizOwn,'bizOwn.xlsx')
 
 save(ern1,empEd,emp1,emp,ft,empRace,empDis,ssip,bizOwn,file='employment.RData')
 
 
+################ top 5 occupations
 
 
-### employment and education over time
+#################################################################################################
+#### top 5 occupations
+#################################################################################################
+jd <- dat25%>%filter(deaf=='deaf',fulltime,blackORwhite=='Black')%>%select(job,pwgtp)
+jh <- dat25%>%filter(deaf=='hearing',fulltime,blackORwhite=='Black')%>%select(job,pwgtp)
+jobD <- sapply(levels(jd$job),
+  function(j) svmean(eval(parse(text=paste0("job=='",j,"'")),jd),jd$pwgtp))
+jobH <- sapply(levels(jh$job),
+  function(j) svmean(eval(parse(text=paste0('job=="',j,'"')),jh),jh$pwgtp))
+
+top5D <- sort(jobD*100,decreasing=TRUE)[1:5]
+top5H <- sort(jobH*100,decreasing=TRUE)[1:5]
+
+sink('top5jobs.txt')
+cat('DEAF\n')
+cat(paste(paste0(names(top5D),' ',round(top5D,1),'%'),collapse='\n'))
+cat('\n\n\n')
+cat('HEARING \n')
+cat(paste(paste0(names(top5H),' ',round(top5H,1),'%'),collapse='\n'))
+sink()
+
+
+
+###############
+### by industry category
+###############
+employmentByIndustry <- dat25%>%filter(fulltime,blackORwhite=='Black')%>%
+  group_by(deaf)%>%do(x=factorProps('industry',.))
+## write results to spreadsheet
+
+employmentByIndustry <- cbind(employmentByIndustry[,-which(names(employmentByIndustry)=='x')],
+  do.call('rbind',employmentByIndustry$x))
+
+ebi <- t(employmentByIndustry[,-grep(' SE',names(employmentByIndustry),fixed=TRUE)])
+
+openxlsx::write.xlsx(ebi,
+  'BlackIndustryPercentagesFT2012-17.xlsx', rowNames=TRUE,colWidths='auto')
+
