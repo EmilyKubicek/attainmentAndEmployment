@@ -13,7 +13,7 @@ jobs <- read.csv('../generalCode/occupations.csv')
  ##    live without a parent (is that possible?)
 
 
-varNames <- c('SERIALNO','ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','RAC1P','HISP','SEX','PERNP','PINCP','SSP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP','COW',paste0('PWGTP',1:80))
+varNames <- c('SERIALNO','ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','SCH','SCHG','RAC1P','HISP','SEX','PERNP','PINCP','SSP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP','COW',paste0('PWGTP',1:80))
 
 
 ctypes <- rep('i',length(varNames))
@@ -58,7 +58,7 @@ dat$attain <- factor(edlevs[dat$attain],levels=edlevs,ordered=TRUE)
  ##    median income (is this household or individual, I'm not remembering . I'm looking for individual if possible)
  ##    collecting social security
  ##    live without a parent (is that possible?)
-
+ ## oh... and % of currently enrolled students (postsecondary)
 dat <- dat%>%filter(agep>22,agep<27,relp!=16)%>% ## relp==16 for institutionalized
     mutate(
          deaf=factor(ifelse(dear==1,'deaf','hearing')),
@@ -82,13 +82,19 @@ dat <- dat%>%filter(agep>22,agep<27,relp!=16)%>% ## relp==16 for institutionaliz
         ##   04     .Stepson or stepdaughter
         ##  07     .Grandchild
         ##   14     .Foster child
-        liveWparent=relp%in%c(2:4,7,14), ## this assumes the parent is filling out the survey
+        dontLiveWparent=!relp%in%c(2:4,7,14), ## this assumes the parent is filling out the survey
         ss=ssp>0,
         ssi=ssip>0,
         Sex=ifelse(sex==1,'Male','Female'),
+        enrolled=sch>1,
+        ## schg:
+        ## 14     .Grade 12
+        ## 15     .College undergraduate years (freshman to senior)
+        ## 16     .Graduate or professional school beyond a bachelor's degree
+        enrolledPS=enrolled&schg>14
       )
 
-print(xtabs(~raceEth+Sex,data=dat))
+print(xtabs(~agep+deaf,data=dat))
 print(xtabs(~attainCum,data=dat))
 
-save(dat,file='attainmentEmploymentDataACS17.RData')
+save(dat,file='ages23-26ACS17.RData')
