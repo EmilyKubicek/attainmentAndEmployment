@@ -1,5 +1,6 @@
 library(tidyverse)
 library(reshape2)
+library(openxlsx)
 
 needDat <- FALSE
 if(!exists("dat")) needDat <- TRUE
@@ -122,23 +123,45 @@ print('attainment end')
 #################################################################################################
 gc()
 
+perDeaf <- dat25%>%group_by(blackORwhite)%>%mutate(DEAF=deaf=='deaf')%>%
+  summarize(percent.deaf=svmean(DEAF,pwgtp)*100,n=n())
+
+perDeaf <- bind_rows(dat25%>%mutate(DEAF=deaf=='deaf')%>%
+                       summarize(blackORwhite='Overall',percent.deaf=svmean(DEAF,pwgtp)*100,n=n()),
+  perDeaf)
+
+write.xlsx(perDeaf,file='percentDeafbyRace.xlsx')
+
 subgroups <- c('Age','Sex','nativity','lanx','diss','blind','selfCare','indLiv','amb','cogDif')
-subPer <- lapply(subgroups,
-  function(ss) dat25%>%group_by(deaf,blackORwhite)%>%do(x=factorProps(ss,.,cum=FALSE)))
+subPer <- sapply(subgroups,
+  function(ss) dat25%>%
+                 group_by(deaf,blackORwhite)%>%
+                 group_map(~as.data.frame(rbind(factorProps(ss,.x,cum=FALSE))))%>%
+                 select(-ends_with('SE')),
+  simplify=FALSE)
 
-subPer <- sapply(subPer,function(dd){
-  dd <- cbind(dd[,-which(names(dd)=='x')],do.call('rbind',dd$x))
-  dd[,-grep(' SE',names(dd),fixed=TRUE)]
-},
-simplify=FALSE)
+## subPer <- sapply(subPer,function(dd){
+##   dd <- cbind(dd[,-which(names(dd)=='x')],do.call('rbind',dd$x))
+##   dd[,-grep(' SE',names(dd),fixed=TRUE)]
+## },
+## simplify=FALSE)
 
-names(subPer) <- subgroups
+## names(subPer) <- subgroups
 
 for(gg in paste0('black',c('Latinx','Asian','ANDwhite'))){
   subPer[[gg]] <- dat25%>%filter(blackORwhite=='Black')%>%
     group_by(deaf)%>%summarize(blackORwhite=blackORwhite[1],x=svmean(!!sym(gg),pwgtp)*100,n=n())
   names(subPer[[gg]])[names(subPer[[gg]])=='x'] <- paste('%',gg)
 }
+subPer[['% blackMulti']] <- dat25%>%filter(blackORwhite=='Black')%>%
+  group_by(deaf)%>%mutate(blackMulti=blackMulti=='BlackMulti')%>%
+  summarize(blackORwhite=blackORwhite[1],x=svmean(blackMulti,pwgtp)*100,n=n())
+names(subPer[['% blackMulti']])[names(subPer[['% blackMulti']])=='x'] <- '% blackMulti'
+
+subPer[['% blackAlone']] <- dat25%>%filter(blackORwhite=='Black')%>%
+  group_by(deaf)%>%mutate(blackAlone=blackMulti=='BlackAlone')%>%
+  summarize(blackORwhite=blackORwhite[1],x=svmean(blackAlone,pwgtp)*100,n=n())
+names(subPer[['% blackAlone']])[names(subPer[['% blackAlone']])=='x'] <- '% blackAlone'
 
 
 
@@ -309,7 +332,7 @@ empEd <- rbind(filter(empEd,edLev=='No HS'), filter(empEd,edLev!='No HS'))
 
 emp$byEducation <- empEd
 
-library(openxlsx)
+
 write.xlsx(emp,file='employmentSubgroups.xlsx')
 
 ### ssip
