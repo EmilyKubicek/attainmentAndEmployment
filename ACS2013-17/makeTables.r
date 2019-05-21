@@ -80,27 +80,13 @@ tab5 <- do.call('rbind',lapply(attainment1$byDiss,disTab))%>%
   arrange(match(diss,unique(diss)))
 
 
+openxlsx::write.xlsx(list(overall=tab1,byAge=tab2,bySex=tab3,subGroups=tab4,byDisability=tab5),
+  'output/attainment.xlsx',row.names=TRUE)
+
+
 ## FOD table
 tab6 <- do.call('cbind',lapply(fod$x, function(y) y[-grep(' SE',names(y))]))
 colnames(tab6) <- paste(fod$deaf,fod$blackORwhite)
 
-openxlsx::write.xlsx(tab6,'fieldOfDegreePercent.xlsx',row.names=TRUE)
+openxlsx::write.xlsx(tab6,'output/fieldOfDegreePercent.xlsx',row.names=TRUE)
 
-
-### enrollment table
-overallEnr$blackORwhite <- 'overall'
-
-enr <- rbind(overallEnr[,names(raceEnr)],raceEnr)
-
-enr[['% enrolled']] <- sapply(enr$x,function(y) y[1])
-enr[['% not enrolled']] <- 1-enr[['% enrolled']]
-enr$n <- sapply(enr$x,function(y) y['n'])
-enr$x <- NULL
-openxlsx::write.xlsx(enr,'enrollment.xlsx')
-
-## overall employment
-emp11 <- do.call('rbind',lapply(emp1$x,function(y) y[-grep(' SE',names(y))]))
-emp1$x <- NULL
-emp1 <- cbind(emp1,emp11)
-
-openxlsx::write.xlsx(emp1,'overallEmployment.xlsx')
