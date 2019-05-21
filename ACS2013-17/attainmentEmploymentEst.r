@@ -36,6 +36,14 @@ source('../generalCode/median.r')
 ### standard calculations+translation thereof
 ###############
 
+lower1 <- function(x) paste0(tolower(substr(x,1,1)),substr(x,2,nchar(x)))
+capsRight <- function(x,tab)
+  if(x%in%tab) x else tab[tolower(tab)==tolower(x)]
+capitalize <- function(x) paste0(toupper(substr(x,1,1)),substr(x,2,nchar(x)))
+noby <- function(x,tab) capsRight(substr(x,3,nchar(x)),tab)
+
+
+
 ### simple tibble-of-lists to data.frame function:
 ff <- function(tt){
   out <- cbind(select(tt,-x),do.call('rbind',tt$x))

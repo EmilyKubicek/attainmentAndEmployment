@@ -5,9 +5,8 @@ emp <- list()
 
 gc()
 emp1 <- dat25%>%group_by(deaf,blackORwhite)%>%do(x=factorProps('employment',.))
-emp1 <- bind_cols(emp1%>%select(-x),as_tibble(do.call('rbind',emp1$x)))
 
-emp$overall <- emp1
+emp$overall <- ff(emp1)
 
 ft <- dat25%>%filter(employment=='Employed')%>%group_by(deaf,blackORwhite)%>%
   summarize(ft=svmean(fulltime,pwgtp),pt=1-ft,n=n(),minAge=min(agep))
