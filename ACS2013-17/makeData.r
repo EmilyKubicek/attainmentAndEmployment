@@ -1,5 +1,6 @@
 library(readr) ## read in the csvs faster
-library(dplyr)
+library(tidyverse)
+library(pryr)
 library(openxlsx)
 states <- read.csv('../generalCode/states.csv')
 jobs <- read.csv('../generalCode/occupations.csv')
@@ -30,7 +31,7 @@ names(dat) <- tolower(names(dat))
 
 print(mem_used())
 
-save(dat,file='fullDat.RData')
+#save(dat,file='fullDat.RData')
 
 gc()
 
@@ -49,28 +50,29 @@ dat$industry <- indCode$ind2[match(dat$naicsp,indCode$code)]
 
 print(dim(dat))
 
-dat$industry <- plyr::revalue(dat$industry, c(
-AGR ="Agriculture, Forestry, Fishing and Hunting",
-EXT ="Mining, Quarrying, and Oil and Gas Extraction",
-UTL ="Utilities",
-CON ="Construction",
-MFG ="Manufacturing",
-WHL ="Wholesale Trade",
-RET ="Retail Trade",
-TRN ="Transportation and Warehousing",
-INF ="Information",
-FIN ="Finance and Insurance; Real Estate and Rental and Leasing",
-PRF ="Professional Services",
-EDU ="Educational Services",
-MED ="Health Care",
-SCA ="Social Assistance",
-ENT ="Arts, Entertainment, and Recreation",
-SRV ="Other Services (except Public Administration)",
-ADM ="Public Administration",
-MIL ="Military"))
-
+dat$industry <- fct_recode(dat$industry,
+"Agriculture"="AGR",
+"Extraction"="EXT",
+"Utilities"="UTL",
+"Construction"="CON",
+"Manufacturing"="MFG",
+"Wholesale"="WHL",
+"Retail"="RET",
+"Transportation"="TRN",
+"Information Services"="INF",
+"Finance"="FIN",
+"Professional Services"="PRF",
+"Education"="EDU",
+"Medical"="MED",
+"Medical"="SCA",
+"Entertainment"="ENT",
+"Service Industry"="SRV",
+"Government, Military, Administration"="ADM",
+"Government, Military, Administration"="MIL")
+dat$industry <- as.character(dat$industry)
 ### separate out travel/food/drink from ENT:
 dat$industry[dat$naicsp%in%c('7211','721M','7224','722Z')] <- "Accommodation and Food Services"
+dat$industry[dat$industry=='UNE'] <- NA
 
 ### aside: print out 3 most common industries in each classification
 indCode$ind <- as.character(indCode$ind)
@@ -180,7 +182,8 @@ print(mem_used())
 
 dat <- mutate(dat,
   blackORwhite=ifelse(racblk==1,'Black',
-    ifelse(rac1p==1,'White','Other')), ## asymmetry here, as in society
+    ifelse(rac1p==1 &(hisp==1), ## white=white only & NOT latinx
+      'White','Other')),
   blackMulti=ifelse(racblk==1,
     ifelse(rac1p==2 & hisp==1,'BlackAlone','BlackMulti'),'NotBlack'),
   blackLatinx=(racblk==1) & (hisp>1),
@@ -209,6 +212,7 @@ print(xtabs(~blackMulti+blackAsian,dat))
 
 print(xtabs(~raceEth+blackMulti,dat))
 
+print(xtabs(~raceEth+blackORwhite,dat))
 #datEnr <- dat%>%select(deaf,starts_with('black'),starts_with('enrolled'),starts_with('pwgtp'))
 
 #dat <- filter(dat,agep>24)

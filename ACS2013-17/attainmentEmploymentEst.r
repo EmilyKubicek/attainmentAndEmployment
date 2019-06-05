@@ -21,8 +21,9 @@ if(needDat){
   }
 }
 
-print(xtabs(~raceEth+attainCum+Sex,data=dat))
-print(xtabs(~raceEth+Sex+deaf,data=dat))
+## print(xtabs(~raceEth+attainCum+Sex,data=dat))
+## print(xtabs(~raceEth+Sex+deaf,data=dat))
+print(xtabs(~raceEth+blackORwhite,data=dat))
 print(xtabs(~st,data=dat))
 print(range(dat$agep))
 source('../generalCode/estimationFunctions.r')
