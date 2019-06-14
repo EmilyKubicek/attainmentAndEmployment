@@ -154,5 +154,10 @@ empEd <- rbind(filter(empEd,edLev=='No HS'), filter(empEd,edLev!='No HS'))
 
 emp$byEducation <- empEd
 
+emp[-1] <- map(emp[-1],~mutate(.,`Med. Earn (FT)`=paste0('$',format(round(`Med. Earn (FT)`,-2),big.mark=','))))
+emp <- map(emp, function(x) {
+  for(nn in grep('%',names(x), fixed=TRUE,value=TRUE)) x[[nn]] <- paste0(round(x[[nn]],1),'%')
+  x
+  })
 
 write.xlsx(emp,file='output/employment.xlsx')
