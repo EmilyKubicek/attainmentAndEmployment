@@ -47,7 +47,9 @@ indCode <- read.csv('../generalCode/naicsCodes.csv') ## copied from data diction
 indCode$ind2 <- substr(indCode$ind,1,3)
 
 dat$industry <- indCode$ind2[match(dat$naicsp,indCode$code)]
-
+#dat <- full_join(dat,indCode,by=c("naicsp"="code"))
+#all.equal(dat$ind2,dat$industry)
+#[1] TRUE
 print(dim(dat))
 
 dat$industry <- fct_recode(dat$industry,
