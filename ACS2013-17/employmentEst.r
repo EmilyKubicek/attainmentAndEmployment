@@ -41,9 +41,9 @@ for(vv in c('Age','Sex','nativity','lanx'))
     )
 
 
-empRace <- dat25%>%filter(deaf=='deaf')%>%
+empRace <- dat25%>%#filter(deaf=='deaf')%>%
   mutate(emp=employment=='Employed')%>%
-  group_by(blackMulti)%>%
+  group_by(deaf,blackMulti)%>%
         summarize(`% Employed`=svmean(emp,pwgtp)*100,
           `% FT`=svmean(fulltime,pwgtp)*100,
           `Med. Earn (FT)`=med1(pernp[fulltime],pwgtp[fulltime],se=FALSE),
@@ -51,7 +51,8 @@ empRace <- dat25%>%filter(deaf=='deaf')%>%
 
 for(rr in paste0('black',c('Latinx','Asian','ANDwhite')))
   empRace <- bind_rows(empRace,
-    dat25%>%filter(deaf=='deaf',!!sym(rr)==1)%>%
+    dat25%>%filter(!!sym(rr)==1)%>%
+      group_by(deaf)%>%
       mutate(emp=employment=='Employed')%>%
       summarize(`% Employed`=svmean(emp,pwgtp)*100,
           `% FT`=svmean(fulltime,pwgtp)*100,
