@@ -18,13 +18,13 @@ if(!exists("dat25")){
       print('something is weird with data, reloading')
       needDat <- TRUE
     }
-  }
+  } else needDat <- TRUE
 } else if(exists("dat25")){
   if(min(dat25$agep!=25)){
     print(paste('min age',min(dat25$agep)))
     needDat <- TRUE
   }
-} else needDat <- TRUE
+}
 
 if(needDat){
   print('loading dataset')
