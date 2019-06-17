@@ -1,5 +1,8 @@
 library(tidyverse)
+library(reshape2)
 source('../generalCode/estimationFunctions.r')
+capitalize <- function(x) paste0(toupper(substr(x,1,1)),substr(x,2,nchar(x)))
+
 
 ## need employment (let's do full/part time for fun) % BA and %HS for 2008-2017
 ## black/white hearing/deaf, men/women
