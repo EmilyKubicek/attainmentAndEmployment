@@ -19,20 +19,20 @@ ctypes$.default <- '_'
 colTypes <- do.call('cols',as.list(ctypes))
 
 ##################### read in US data (50 states + DC)
-datUS <- read_csv('../../../data/acs5yr2017/psam_pusa.csv',col_types=colTypes)
+datUS <- read_csv('../../../data/acs5yr2018/psam_pusa.csv',col_types=colTypes)
 dim(datUS)
 setdiff(varNames,names(datUS))
 setdiff(names(datUS),varNames)
 
 for(ll in c('b','c','d'))
   datUS <- bind_rows(datUS,
-    read_csv(paste0('../../../data/acs5yr2017/psam_pus',ll,'.csv'),col_types=colTypes))
+    read_csv(paste0('../../../data/acs5yr2018/psam_pus',ll,'.csv'),col_types=colTypes))
 gc()
 
 names(datUS) <- tolower(names(datUS))
 
 ##################### download PR data
-datPR <- read_csv('../../../data/acs5yr2017/psam_p72.csv',col_types=colTypes)
+datPR <- read_csv('../../../data/acs5yr2018/psam_p72.csv',col_types=colTypes)
 names(datPR) <- tolower(names(datPR))
 
 
