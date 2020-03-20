@@ -3,10 +3,12 @@ library(pryr)
 library(openxlsx)
 states <- read.csv('../../generalCode/states.csv')
 jobs <- read.csv('../../generalCode/occupations.csv')
+hispCats <- read_csv('../generalCode/hisp.csv') # copied from data dictionary
+raceCats <- read_csv('../generalCode/race1.csv') # copied from data dictionary
 
 #1) a simple breakdown of current enrollment, and completion data, across type of institution (4 year colleges, community colleges, etc) using all the 'type of institution' data we have, so that would give us some nice descriptives and allow us to make a final decision on how we want to categorize 'community colleges and 2-year institutions'
 
-varNames <- c('SERIALNO','ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','SCHG','SCH','RAC1P','HISP','SEX','PERNP','PINCP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP','COW','RAC3P','RACBLK','RACASN','RACWHT','ADJINC','NATIVITY','LANX','MAR','JWTR',paste0('PWGTP',1:80))
+varNames <- c('SERIALNO','ST','AGEP','DDRS','DEAR','DEYE','DOUT','DPHY','DRATX','DREM','FDEARP','ESR','SCHL','SCHG','SCH','RAC1P','HISP','SEX','PERNP','PINCP','SSIP','WKHP','WKW','ADJINC','PWGTP','RELP','FOD1P','NAICSP','OCCP','INDP','COW','RAC2P','RAC3P','RACBLK','RACASN','RACWHT','RACAIAN','RACSOR','ADJINC','NATIVITY','LANX','MAR','JWTR',paste0('PWGTP',1:80))
 
 
 ctypes <- rep('i',length(varNames))
@@ -129,9 +131,11 @@ dat <- dat%>%filter(agep>17,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
         amb=factor(ifelse(dphy==1,'Ambulatory Difficulty','No Ambulatory Difficulty')),
         cogDif=factor(ifelse(drem==1,'Cognitive Difficulty','No Cognitive Difficulty')),
         deaf=factor(ifelse(dear==1,'deaf','hearing')),
-        Age=ordered(ifelse(agep<35,'25-34',
+        Age=ordered(
+          ifelse(agep<25,'18-24',
+          ifelse(agep<35,'25-34',
             ifelse(agep<45,'35-44',
-            ifelse(agep<55,'45-54','55-64')))),
+            ifelse(agep<55,'45-54','55-64'))))),
         attainCum=ordered(
             ifelse(attain<'Regular high school diploma','No HS',
             ifelse(attain<'Some college, but less than 1 year','HS Diploma',
@@ -148,13 +152,14 @@ dat <- dat%>%filter(agep>17,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
 
         fulltime=(employment=='Employed')&(wkw==1 & wkhp>=35),
 
-        raceEth=ifelse(hisp>1,"Hispanic",
-                ifelse(rac1p==2,"African American",
-                  ifelse(rac1p==6,"Asian",
-                    ifelse(rac1p==7,"PacIsl",
-                      ifelse(rac1p==9,"Multiracial",
-                ifelse(rac1p%in%c(3,4,5),'American Indian',
-                ifelse(rac1p==1,"White","Other"))))))),
+        latinx=hisp>1,
+        hispType=hispCats$hisp[hisp],
+        hispType=fct_lump_min(hispType,500,w=ifelse((agep>24&deaf=='deaf'&latinx)|!latinx,1,0),other_level="All Other Spanish/Hispanic/Latino"),
+        race=raceCats$race[rac1p],
+        race=fct_collapse(race,AIAN=c("Alaska Native alone","Am Ind OR Al Nat","American Indian alone")),
+        black=racblk==1,
+        asian=racasn==1,
+        AmIndAKNat=racaian==1,
 
         diss=ifelse(ddrs==1|deye==1|dout==1|dphy==1|drem==1,'disabled','nondisabled'),
         blind=ifelse(deye==1,'blind','seeing'),
@@ -164,8 +169,8 @@ dat <- dat%>%filter(agep>17,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
         selfEmp=cow%in%(6:7),
         bizOwner=cow==7,
 
-        nativity=ifelse(nativity==1,'Native','Foreign born'),
-        lanx=ifelse(lanx==1,'UsesOtherLanguage','JustEnglish'),
+        Nativity=ifelse(nativity==1,'Native','Foreign born'),
+        Language=ifelse(lanx==1,'UsesOtherLanguage','JustEnglish'),
         enrolled=ifelse(is.na(schg),'not enrolled','enrolled'),
         enrolledPS=!is.na(schg)&(schg>14),
         enrolledPro=!is.na(schg)&(schg==16)
@@ -174,50 +179,12 @@ dat <- dat%>%filter(agep>17,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
 gc()
 print(mem_used())
 
-## Separate Black/African American alone vs.
-## Black/African American mixed race
-## Then the following:
-## Black/African American and Latinx
-## Black/African American and Asian
-## Black/African American and white
+save(dat,file='data/attainmentEmploymentDataACS14-18.RData')
 
 dat <- mutate(dat,
-  blackORwhite=ifelse(racblk==1,'Black',
-    ifelse(rac1p==1 &(hisp==1), ## white=white only & NOT latinx
-      'White','Other')),
-  blackMulti=ifelse(racblk==1,
-    ifelse(rac1p==2 & hisp==1,'BlackAlone','BlackMulti'),'NotBlack'),
-  blackLatinx=(racblk==1) & (hisp>1),
-  blackAsian=(racblk==1) & (racasn==1),
-  blackANDwhite=(racblk==1) & (racwht==1))
-
-print(dim(dat))
-
-gc()
-
-
-
-
-print(xtabs(~raceEth+Sex,data=dat))
-print(xtabs(~attainCum,data=dat))
-
-print(xtabs(~blackORwhite+blackMulti,dat))
-print(xtabs(~blackMulti+blackLatinx,dat))
-print(xtabs(~blackMulti+blackANDwhite,dat))
-print(xtabs(~blackMulti+blackAsian,dat))
-
-## enrollment for 18-64; all else for 25-64
-
-
-
-
-print(xtabs(~raceEth+blackMulti,dat))
-
-print(xtabs(~raceEth+blackORwhite,dat))
-#datEnr <- dat%>%select(deaf,starts_with('black'),starts_with('enrolled'),starts_with('pwgtp'))
-
-#dat <- filter(dat,agep>24)
-gc()
-print(mem_used())
-
-save(dat,file='attainmentEmploymentDataACS13-17.RData')
+  race2=ifelse(
+    black,"black+",
+    ifelse(AmIndAKNat,'AIAN+',as.character(race))
+  ),
+  race2=fct_lump_min(race2,500,w=ifelse(agep>24&deaf=='deaf'&latinx,1,0),other_level="Other/Multi")
+)
