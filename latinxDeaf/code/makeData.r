@@ -179,7 +179,7 @@ dat <- dat%>%filter(agep>17,agep<65,relp!=16)%>% ## relp==16 for institutionaliz
 gc()
 print(mem_used())
 
-save(dat,file='data/attainmentEmploymentDataACS14-18.RData')
+
 
 dat <- mutate(dat,
   race2=ifelse(
@@ -188,3 +188,5 @@ dat <- mutate(dat,
   ),
   race2=fct_lump_min(race2,500,w=ifelse(agep>24&deaf=='deaf'&latinx,1,0),other_level="Other/Multi")
 )
+
+save(dat,file='data/attainmentEmploymentDataACS14-18.RData')

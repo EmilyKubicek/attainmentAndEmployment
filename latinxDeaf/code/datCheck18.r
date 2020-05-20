@@ -1,8 +1,8 @@
 needDat <- FALSE
 if(!exists("dat18")){
   if(exists("dat")){
-    nnn <- with(dat,sum(blackORwhite=='Black'&agep>24&deaf=='deaf'))
-    if(nnn!=16601) warning('Sample size wrong! is this the right "dat"?')
+    nnn <- with(dat,sum(latinx&agep>24&deaf=='deaf'))
+    if(nnn!=19655) warning('Sample size wrong! is this the right "dat"?')
     if(min(dat$agep)==18){
       dat18 <- dat
       rm(dat);gc()
@@ -25,7 +25,7 @@ if(!exists("dat18")){
 if(needDat){
   print('loading dataset')
   gc()
-  load('attainmentEmploymentDataACS13-17.RData')
+  load('data/attainmentEmploymentDataACS14-18.RData')
   dat18 <- filter(dat,agep>17)
   rm(dat); gc()
 } else print('using dataset "dat18" already in workspace')

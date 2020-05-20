@@ -1,52 +1,43 @@
-source('datCheck25.r')
+source('code/datCheck25.r')
 
 capsRight <- function(x,tab)
   if(x%in%tab) x else tab[tolower(tab)==tolower(x)]
 
 noby <- function(x,tab) capsRight(substr(x,3,nchar(x)),tab)
 
-stand1 <- function(x,FUN,dat,...){
-  fun1 <- function(grp,data){
+fun1 <- function(grp,data){
     if(substr(grp,1,2)=='by') grp <- noby(grp,names(data))
-    data%>%group_by(deaf,blackORwhite,!!sym(grp))%>%do(x=FUN(x,.))
-  }
-  fun2 <- function(.data)
-    append(
-      append(
-        list(overall=.data%>%group_by(deaf,blackORwhite)%>%do(x=FUN(x,.))),
-        sapply(paste0('by',c('Age','Sex','Nativity','Lanx')),fun1,data=.data,simplify=FALSE)),
-      list(byDiss=lapply(c('diss','blind','selfCare','indLiv','amb','cogDif'),fun1,data=.data))
-    )
-  fun3 <- function(fil,data)
-    data%>%filter(!!sym(fil))%>%group_by(deaf)%>%do(x=FUN(x,.))
-
-  out <-
-    append(
-      append(
-        list(
-          NationalAverage=dat%>%do(x=FUN(x,.)),
-          blackMulti=dat%>%filter(blackMulti!='NotBlack')%>%group_by(deaf,blackMulti)%>%do(x=FUN(x,.))
-        ),
-        dat%>%filter(blackORwhite!='Other')%>%fun2(.)),
-      sapply(paste0('black',c('Latinx','Asian','ANDwhite')),fun3,data=dat,simplify=FALSE)
-    )
-  names(out) <- gsub('ANDw','W',names(out))
-
-  out
+    data%>%group_by(deaf,latinx,!!sym(grp))%>%group_modify(~as.data.frame(rbind(FUN(x,.))))
 }
 
 
+dat25$deaf <- as.character(dat25$deaf)
 
-attainment1 <- dat25%>%stand1('attainCum',factorProps,.)
-gc()
+attainment1 <-
+  bind_rows(
+    tibble(table='National Average',deaf=NA,latinx=NA,subgroup=NA),
+    as.data.frame(rbind(factorProps('attainCum',dat25))),
+    tibble(table='Overall By Latinx'),
+    dat25%>%group_by(deaf,latinx)%>%group_modify(~as.data.frame(rbind(factorProps('attainCum',.)))),
+    tibble(table='By Latinx Subgroups'),
+    dat25%>%group_by(deaf,hispType)%>%group_modify(~as.data.frame(rbind(factorProps('attainCum',.))))%>%rename(subgroup=hispType)
+  )
+
+for(ggg in c('race2','Age','Sex','Nativity','Language','diss','blind','selfCare','indLiv','amb','cogDif'))
+  attainment1 <- attainment1%>%
+    bind_rows(
+      tibble(table=paste('By',ggg)),
+      fun1(ggg,dat25)%>%rename(subgroup=!!ggg)
+    )
+
+
+attainment1 <- mutate(attainment1,latinx=ifelse(latinx,'Latinx','Not Latinx'))
+
 ##### Field of degree
-fod <- dat25%>%filter(blackORwhite!='Other',attainCum>'Associates')%>%group_by(deaf,blackORwhite)%>%
-  do(x=factorProps('fodSmall',.,cum=FALSE))
+fod <- dat25%>%filter(attainCum>'Associates')%>%group_by(deaf,latinx)%>%
+  group_modify(~as.data.frame(rbind(factorProps('fodSmall',.,cum=FALSE))))
 gc()
 
 
-gc()
-save(attainment1,fod,overallEnr,raceEnr,raceGenderEnr,file='output/attainment.RData')
-
-source('makeTables.r')
+openxlsx::write.xlsx(list(attainment=attainment1,fieldOfDegree=fod),file='results/attainment.xlsx')
 
